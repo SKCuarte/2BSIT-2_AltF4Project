@@ -23,18 +23,17 @@ This is a front-end demo. Before production use:
 2. Roles, blocking and rights are enforced only in the browser. Enforce them on the server.
 3. Password reset has no email verification. Use a time-limited emailed link or code.
 4. No rate limiting on login attempts.
-5. The card figures are static samples. Connect them to real data.
 
  Hope, inc. 
    Everything is saved in this browser (localStorage).
    What this file does:
-     1. Settings and demo accounts
-     2. Small helper functions
-     3. Editable page text ("Edit content")
-     4. The log in / register / reset password pop-up
-     5. The dashboard after login
-     6. The admin table (Super Admin and Admin only)
-
+   1. Settings and demo accounts
+   2. Small helper functions
+   3. Editable page text ("Edit content")
+   4. The log in / register / reset password pop-up
+   5. The dashboard after login
+   6. The admin table (Super Admin and Admin only)
+      
 !NOTICE! 
 - Never use personal information upon registering new user account, UNLESS supabase was implemented.
 - BACKEND Dev or Database will use supabase website to handle information(via server)
