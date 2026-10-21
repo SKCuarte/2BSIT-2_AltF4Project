@@ -9,9 +9,9 @@ const NEW_RIGHTS = true;
 
 // Demo accounts. They are never shown on the page. Change or delete them for your own use.
 const SEED = [
-  { name: "Super Admin", email: "superadmin@hope.com", pw: "SuperAdmin#1", role: "superadmin", blocked: false, rights: { dashboard: true } },
-  { name: "Admin",       email: "admin@hope.com",      pw: "Admin#1234",   role: "admin",      blocked: false, rights: { dashboard: true } },
-  { name: "Alex Rivera", email: "user@hope.com",       pw: "User#12345",   role: "user",       blocked: false, rights: { dashboard: true } }
+  { name: "Super Admin", email: "superadmin@hope.com", pw: "Super@Admin1", role: "superadmin", blocked: false, rights: { dashboard: true } },
+  { name: "Admin",       email: "admin@hope.com",      pw: "Admin@Admin",   role: "admin",      blocked: false, rights: { dashboard: true } },
+  { name: "User", email: "user@hope.com",       pw: "User@User",   role: "user",       blocked: false, rights: { dashboard: true } }
 ];
 
 // Names used to save data in the browser
