@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Hope, Inc. ERP — Authentication Wireframes | S1-UIX-02</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#overview" aria-label="Hope ERP authentication home"><span class="brand-mark">H</span><span>Hope, Inc. <small>ERP</small></span></a>
+    <div class="top-meta"><span class="task-pill">S1-UIX-02</span><span class="muted">Sprint 1 · Week 1</span></div>
+  </header>
+
+  <main class="page" id="overview">
+    <section class="intro">
+      <p class="eyebrow">USER AUTHENTICATION</p>
+      <h1>Account access</h1>
+      <p class="lead">Simple account screens for Hope ERP, including login, registration, and password recovery.</p>
+    </section>
+
+    <nav class="screen-nav" aria-label="Authentication screens">
+      <a href="#login">01 Login</a>
+      <a href="#registration">02 Registration</a>
+      <a href="#set-password">03 Set password</a>
+      <a href="#forgot-password">04 Forgot password</a>
+      <a href="#reset-password">05 Reset password</a>
+      <a href="#flow-map">Flow map</a>
+    </nav>
+
+    <section class="screen-section" id="login">
+      <div class="section-heading"><div><p class="eyebrow">SCREEN 01</p><h2>Login</h2></div><span class="status-tag">Main screen</span></div>
+      <div class="screen-grid">
+        <article class="auth-card">
+          <div class="auth-head"><span class="mini-mark">H</span><div><h3>Welcome back</h3><p>Enter your account details to continue.</p></div></div>
+          <form action="#login" method="get">
+            <div class="field"><label for="login-email">Work email</label><input id="login-email" type="email" placeholder="name@company.com" autocomplete="username" required><small class="hint">Use your Hope ERP email address.</small></div>
+            <div class="field"><div class="label-row"><label for="login-password">Password</label><a href="#forgot-password">Forgot password?</a></div><input id="login-password" type="password" placeholder="Enter your password" autocomplete="current-password" required></div>
+            <label class="check-row"><input type="checkbox"> <span>Remember me</span></label>
+            <button class="btn btn-primary full" type="submit">Sign in</button>
+          </form>
+          <div class="auth-footer">Don't have an account? <a href="#registration">Create an account</a></div>
+        </article>
+        <aside class="state-column">
+          <article class="state-card error-state"><div class="state-title"><span class="state-icon">!</span><h3>Invalid credentials</h3></div><p>The email or password is incorrect. Please check your details and try again.</p><span class="placement">Placement: above fields / below page title</span></article>
+          <article class="state-card error-state"><div class="state-title"><span class="state-icon">!</span><h3>Account blocked</h3></div><p>Your account is currently blocked. Please contact your administrator.</p><a href="#support" class="text-link">Contact administrator →</a><span class="placement">Placement: alert above form; avoid revealing security-sensitive details</span></article>
+          <article class="state-card warning-state"><div class="state-title"><span class="state-icon">i</span><h3>Registration pending</h3></div><p>Your account request is still waiting for approval. We will email you when it is ready.</p><span class="placement">Placement: informational banner; sign-in remains unavailable</span></article>
+        </aside>
+      </div>
+      <div class="validation-note"><strong>Validation placements</strong><span>Email: required + valid email format.</span><span>Password: required.</span><span>Show field-level messages below the input; preserve entered email after an error.</span></div>
+    </section>
+
+    <section class="screen-section" id="registration">
+      <div class="section-heading"><div><p class="eyebrow">SCREEN 02</p><h2>Create an account</h2></div><span class="status-tag pending">Approval required</span></div>
+      <div class="screen-grid">
+        <article class="auth-card wide-card">
+          <div class="auth-head"><span class="mini-mark">H</span><div><h3>Create an account</h3><p>Fill in your details so an administrator can review your request.</p></div></div>
+          <form action="#registration-pending" method="get" class="form-grid">
+            <div class="field"><label for="reg-name">Full name</label><input id="reg-name" placeholder="e.g. Jamie Santos" autocomplete="name" required><small class="hint">Use your full name.</small></div>
+            <div class="field"><label for="reg-email">Work email</label><input id="reg-email" type="email" placeholder="name@company.com" autocomplete="email" required></div>
+            <div class="field"><label for="reg-dept">Department</label><select id="reg-dept" required><option value="">Select department</option><option>Operations</option><option>Finance</option><option>Human Resources</option><option>IT</option><option>Other</option></select></div>
+            <div class="field"><label for="reg-role">Requested role</label><select id="reg-role" required><option value="">Select access type</option><option>Staff</option><option>Manager</option><option>Other / unsure</option></select><small class="hint">An administrator will confirm your access.</small></div>
+            <div class="field span-2"><label for="reg-reason">Reason for access <span class="optional">(optional)</span></label><textarea id="reg-reason" rows="3" placeholder="Why do you need access to Hope ERP?"></textarea></div>
+            <div class="span-2"><label class="check-row"><input type="checkbox" required><span>I confirm that the information is correct.</span></label></div>
+            <div class="form-actions span-2"><button class="btn btn-primary" type="submit">Submit request</button><a class="btn btn-outline" href="#login">Back to login</a></div>
+          </form>
+          <div class="auth-footer">Already have an account? <a href="#login">Sign in</a></div>
+        </article>
+        <aside class="state-column">
+          <article class="state-card success-state" id="registration-pending"><div class="state-title"><span class="state-icon">✓</span><h3>Request sent</h3></div><span class="badge badge-pending">Pending approval</span><p>Your request has been submitted. An administrator will review it and send an update to your email.</p><div class="summary-row"><span>Request status</span><strong>Pending</strong></div><div class="summary-row"><span>Next step</span><strong>Wait for approval</strong></div><a href="#login" class="btn btn-outline full">Return to login</a></article>
+          <div class="placement-card"><strong>Validation placements</strong><p>Required field errors appear directly under each field. Show a confirmation message after the form is submitted.</p></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="screen-section" id="set-password">
+      <div class="section-heading"><div><p class="eyebrow">SCREEN 03</p><h2>Set password</h2></div><span class="status-tag">Invite / first login</span></div>
+      <div class="screen-grid centered-grid">
+        <article class="auth-card">
+          <div class="auth-head"><span class="mini-mark">H</span><div><h3>Create your password</h3><p>Create a password for your account.</p></div></div>
+          <div class="inline-info">You’re setting up access for <strong>jamie.santos@company.com</strong>.</div>
+          <form action="#password-set-success" method="get">
+            <div class="field"><label for="new-password">New password</label><input id="new-password" type="password" placeholder="Create a password" autocomplete="new-password" minlength="8" required><small class="hint">Use at least 8 characters.</small></div>
+            <div class="field"><label for="confirm-password">Confirm password</label><input id="confirm-password" type="password" placeholder="Re-enter password" autocomplete="new-password" minlength="8" required><small class="error-text">Example error: Passwords do not match.</small></div>
+            <button class="btn btn-primary full" type="submit">Set password</button>
+          </form>
+          <div class="auth-footer"><a href="#login">Return to login</a></div>
+        </article>
+        <aside class="state-column">
+          <article class="state-card success-state" id="password-set-success"><div class="state-title"><span class="state-icon">✓</span><h3>Password set</h3></div><p>Your password is ready. You can now log in.</p><a href="#login" class="btn btn-primary full">Continue to login</a></article>
+          <div class="placement-card"><strong>Validation placements</strong><p>Password rules under the first field; mismatch message under confirmation; success feedback after submit. Token expired/invalid should show a clear recovery link.</p><a href="#forgot-password">Go to password recovery →</a></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="screen-section" id="forgot-password">
+      <div class="section-heading"><div><p class="eyebrow">SCREEN 04</p><h2>Forgot password</h2></div><span class="status-tag">Recovery request</span></div>
+      <div class="screen-grid centered-grid">
+        <article class="auth-card">
+          <div class="back-link"><a href="#login">← Back to login</a></div>
+          <div class="auth-head"><span class="mini-mark">H</span><div><h3>Reset your password</h3><p>Enter your email address and we will send a reset link if the account is found.</p></div></div>
+          <form action="#recovery-sent" method="get">
+            <div class="field"><label for="recovery-email">Work email</label><input id="recovery-email" type="email" placeholder="name@company.com" autocomplete="email" required><small class="hint">Enter the email you used for your account.</small></div>
+            <button class="btn btn-primary full" type="submit">Send recovery link</button>
+          </form>
+          <div class="auth-footer">Remembered your password? <a href="#login">Sign in</a></div>
+        </article>
+        <aside class="state-column">
+          <article class="state-card success-state" id="recovery-sent"><div class="state-title"><span class="state-icon">✓</span><h3>Check your email</h3></div><p>If the email is registered, a reset link will be sent. Please also check your spam folder.</p><span class="placement">Use a neutral confirmation to avoid confirming whether an email is registered.</span><a href="#reset-password" class="btn btn-outline full">Preview reset password screen</a></article>
+          <div class="placement-card"><strong>Validation placements</strong><p>Email required + valid format. Place errors below the email field. Rate-limit repeated requests and show a generic confirmation.</p></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="screen-section" id="reset-password">
+      <div class="section-heading"><div><p class="eyebrow">SCREEN 05</p><h2>Reset password</h2></div><span class="status-tag">From reset email</span></div>
+      <div class="screen-grid centered-grid">
+        <article class="auth-card">
+          <div class="auth-head"><span class="mini-mark">H</span><div><h3>Choose a new password</h3><p>Enter your new password twice to confirm it.</p></div></div>
+          <form action="#reset-success" method="get">
+            <div class="field"><label for="reset-new">New password</label><input id="reset-new" type="password" placeholder="New password" autocomplete="new-password" minlength="8" required><small class="hint">Minimum 8 characters.</small></div>
+            <div class="field"><label for="reset-confirm">Confirm new password</label><input id="reset-confirm" type="password" placeholder="Confirm new password" autocomplete="new-password" minlength="8" required></div>
+            <button class="btn btn-primary full" type="submit">Update password</button>
+          </form>
+          <div class="auth-footer"><a href="#forgot-password">Request another link</a></div>
+        </article>
+        <aside class="state-column">
+          <article class="state-card success-state" id="reset-success"><div class="state-title"><span class="state-icon">✓</span><h3>Password updated</h3></div><p>Your password has been changed. You can now log in with your new password.</p><a href="#login" class="btn btn-primary full">Back to login</a></article>
+          <article class="state-card error-state"><div class="state-title"><span class="state-icon">!</span><h3>Link expired or invalid</h3></div><p>This recovery link can’t be used. Request a new password reset link to continue.</p><a href="#forgot-password" class="text-link">Request a new link →</a><span class="placement">Placement: page-level alert above form</span></article>
+          <div class="placement-card"><strong>Validation placements</strong><p>Confirm password mismatch below confirmation. Expired/used token message above the form. Do not reveal the old password or token.</p></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="screen-section" id="flow-map">
+      <div class="section-heading"><div><p class="eyebrow">NAVIGATION</p><h2>User flow map</h2></div><span class="status-tag">S1-UIX-02</span></div>
+      <div class="flow-board">
+        <div class="flow-lane"><div class="flow-node start">Public visitor</div><span class="flow-arrow">→</span><a class="flow-node" href="#registration">Registration form</a><span class="flow-arrow">→</span><a class="flow-node pending-node" href="#registration-pending">Pending approval</a><span class="flow-arrow">→</span><a class="flow-node" href="#set-password">Approval / invite email</a><span class="flow-arrow">→</span><a class="flow-node" href="#set-password">Set password</a><span class="flow-arrow">→</span><a class="flow-node success-node" href="#login">Login</a></div>
+        <div class="flow-lane"><a class="flow-node start" href="#login">Existing user</a><span class="flow-arrow">→</span><a class="flow-node" href="#login">Login</a><span class="flow-arrow">→</span><div class="branch"><a class="flow-node success-node" href="#login">Valid credentials</a><a class="flow-node error-node" href="#login">Invalid / blocked</a></div></div>
+        <div class="flow-lane"><a class="flow-node" href="#forgot-password">Forgot password</a><span class="flow-arrow">→</span><a class="flow-node" href="#recovery-sent">Neutral confirmation</a><span class="flow-arrow">→</span><a class="flow-node" href="#reset-password">Email recovery link</a><span class="flow-arrow">→</span><a class="flow-node" href="#reset-password">Reset password</a><span class="flow-arrow">→</span><a class="flow-node success-node" href="#login">Login</a></div>
+      </div>
+      <div class="flow-notes"><div><strong>How the screens connect</strong><p>All auth screens provide a clear return-to-login. Registration and recovery confirmations link to the next expected step.</p></div><div><strong>Form notes</strong><p>Use neutral recovery responses, rate-limit requests, enforce server-side checks, and show field-level errors adjacent to the relevant input.</p></div></div>
+    </section>
+
+    <section class="screen-section support-section" id="support">
+      <p class="eyebrow">SUPPORT STATE</p><h2>Need help logging in?</h2><p class="muted">If you have trouble logging in or your request is still pending, contact your Hope ERP administrator.</p><a href="#login" class="btn btn-outline">Return to login</a>
+    </section>
+
+    <footer class="footer"><span>@ Hope, Inc.</span>
+  </main>
+</body>
+</html>
