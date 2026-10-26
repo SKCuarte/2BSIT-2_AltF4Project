@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Hope ERP — Design System</title>
+  <link rel="stylesheet" href="design-system.css">
+  <script src="design-system.js" defer></script>
+</head>
+<body>
+  <header class="ds-top">
+    <div class="ds-brand">◉ Hope, Inc. </div>
+    <input class="ds-theme-switch" id="ds-theme-toggle" type="checkbox" aria-label="Toggle dark theme">
+    <label class="ds-theme-toggle" for="ds-theme-toggle"><span class="ds-light-label">Dark theme</span><span class="ds-dark-label">Light theme</span></label>
+  </header>
+
+  <main class="ds-page">
+    <section class="ds-hero">
+      <h1>Design System</h1>
+      <p class="ds-body muted">Core styles and components to be implemented for Hope, Inc. website.</p>
+    </section>
+
+    <section class="ds-section">
+      <h2 class="ds-section-title">Colors</h2>
+      <div class="ds-grid-3">
+        <div class="ds-swatch" style="background:var(--accent);color:var(--on-accent)"><span class="ds-color-label">Primary</span><code>--accent</code></div>
+        <div class="ds-swatch" style="background:var(--accent-dark);color:var(--on-accent)"><span class="ds-color-label">Hover</span><code>--accent-dark</code></div>
+        <div class="ds-swatch" style="background:var(--accent-light);color:var(--text)"><span class="ds-color-label">Subtle</span><code>--accent-light</code></div>
+        <div class="ds-swatch" style="background:var(--sun);color:#10222e"><span class="ds-color-label">Highlight</span><code>--sun</code></div>
+        <div class="ds-swatch" style="background:var(--surface);color:var(--text)"><span class="ds-color-label">Surface</span><code>--surface</code></div>
+        <div class="ds-swatch" style="background:var(--soft);color:var(--text)"><span class="ds-color-label">Soft surface</span><code>--soft</code></div>
+      </div>
+      <div class="ds-stack" style="margin-top:14px">
+        <span class="ds-badge ds-badge-success">Active</span>
+        <span class="ds-badge ds-badge-warning">Pending</span>
+        <span class="ds-badge ds-badge-danger">Blocked</span>
+        <span class="ds-badge ds-badge-info">Updated</span>
+        <span class="ds-badge ds-badge-neutral">Draft</span>
+      </div>
+    </section>
+
+    <section class="ds-section">
+      <h2 class="ds-section-title">Typography/Fonts/Sizes</h2>
+      <div class="ds-card">
+        <p class="ds-overline">Heading 1</p><h1>Business overview</h1>
+        <p class="ds-overline">Heading 2</p><h2>Operations summary</h2>
+        <p class="ds-overline">Heading 3</p><h3>Recent activity</h3>
+        <p class="ds-body">Body text for standard interface content.</p>
+        <p class="ds-caption">Small text for labels and supporting details.</p>
+      </div>
+    </section>
+
+    <section class="ds-section">
+      <h2 class="ds-section-title">Buttons</h2>
+      <div class="ds-card ds-stack">
+        <button class="btn-primary" type="button">Primary</button>
+        <button class="btn-secondary" type="button">Secondary</button>
+        <button class="btn-outline" type="button">Outline</button>
+        <button class="btn-danger" type="button">Delete</button>
+        <button class="btn-primary" type="button" disabled>Disabled</button>
+      </div>
+    </section>
+
+    <section class="ds-section">
+      <h2 class="ds-section-title">Form controls</h2>
+      <div class="ds-card">
+        <form class="ds-demo-form" id="ds-demo-form">
+          <div class="ds-field"><label class="ds-label" for="ds-name">Full name</label><input class="ds-input" id="ds-name" name="name" placeholder="Full name"></div>
+          <div class="ds-field"><label class="ds-label" for="ds-dept">Department</label><select class="ds-select" id="ds-dept" name="department"><option value="">Select department</option><option>Operations</option><option>Finance</option><option>Human Resources</option></select></div>
+          <div class="ds-field is-error"><label class="ds-label" for="ds-email">Email · error example</label><input class="ds-input" id="ds-email" type="email" aria-describedby="ds-email-error" value="invalid-email"><span class="ds-error" id="ds-email-error">Enter a valid email address.</span></div>
+          <div class="ds-field"><label class="ds-label" for="ds-status">Status</label><select class="ds-select" id="ds-status"><option>Active</option><option>Pending</option><option>Blocked</option></select></div>
+          <div class="ds-field ds-span-2"><label class="ds-label" for="ds-notes">Notes</label><textarea class="ds-textarea" id="ds-notes" placeholder="Optional notes"></textarea></div>
+        </form>
+      </div>
+    </section>
+
+    <section class="ds-section">
+      <h2 class="ds-section-title">Dialog</h2>
+      <div class="ds-card">
+        <button class="btn-primary" id="ds-open-modal" type="button">Open dialog</button>
+      </div>
+      <dialog class="ds-dialog" id="ds-modal-dialog" aria-labelledby="ds-modal-title">
+        <div class="ds-modal">
+          <div class="ds-modal-header">
+            <div class="ds-modal-title" id="ds-modal-title">Invite team member</div>
+            <button class="btn-outline btn-sm" id="ds-close-modal" type="button" aria-label="Close dialog">✕</button>
+          </div>
+          <div class="ds-field"><label class="ds-label" for="ds-invite">Email address</label><input class="ds-input" id="ds-invite" type="email" placeholder="name@company.com"></div>
+          <div class="ds-stack" style="justify-content:flex-end;margin-top:16px"><button class="btn-outline" id="ds-cancel-modal" type="button">Cancel</button><button class="btn-primary" id="ds-send-invite" type="button">Send invite</button></div>
+          <p class="ds-help" id="ds-modal-message" role="status" aria-live="polite"></p>
+        </div>
+      </dialog>
+    </section>
+
+    <section class="ds-section">
+      <h2 class="ds-section-title">Data table</h2>
+      <div class="ds-table-wrap">
+        <table class="ds-table">
+          <thead><tr><th scope="col">Employee</th><th scope="col">Department</th><th scope="col">Status</th><th scope="col" class="numeric">Tasks</th></tr></thead>
+          <tbody>
+            <tr><td>Alex Rivera</td><td>Operations</td><td><span class="ds-badge ds-badge-success">Active</span></td><td class="numeric">12</td></tr>
+            <tr><td>Jamie Santos</td><td>Finance</td><td><span class="ds-badge ds-badge-warning">Pending</span></td><td class="numeric">4</td></tr>
+            <tr><td>Sam Lee</td><td>Human Resources</td><td><span class="ds-badge ds-badge-danger">Blocked</span></td><td class="numeric">0</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="ds-caption" style="padding-top:20px;border-top:1px solid var(--border)">Hope, Inc. ERP · S1-UIX-01</footer>
+  </main>
+</body>
+</html>
