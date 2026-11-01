@@ -45,6 +45,7 @@ jobs:
           printf '%s\n' "$status"
           echo "$status" | grep -Fx 'PENDING 001_hope_base_structure.sql'
           echo "$status" | grep -Fx 'PENDING 002_hope_sample_data.sql'
+          echo "$status" | grep -Fx 'PENDING 003_user_management.sql'
       - name: Apply migrations
         run: npm run db:migrate
       - name: Confirm applied migration status
@@ -53,5 +54,8 @@ jobs:
           printf '%s\n' "$status"
           echo "$status" | grep -Fx 'APPLIED 001_hope_base_structure.sql'
           echo "$status" | grep -Fx 'APPLIED 002_hope_sample_data.sql'
+          echo "$status" | grep -Fx 'APPLIED 003_user_management.sql'
       - name: Verify HOPE fixtures and constraints
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/hope_verification.sql
+      - name: Verify user-management schema and permissions
+        run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql
