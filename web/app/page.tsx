@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export default function Home() {
   const [firstName, setFirstName] = useState("");
@@ -10,6 +11,7 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -55,6 +57,32 @@ export default function Home() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setMessage("");
+    setIsSuccess(false);
+    setIsGoogleSubmitting(true);
+
+    try {
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        setMessage("Google registration could not be started. Please try again.");
+        setIsGoogleSubmitting(false);
+      }
+    } catch {
+      setMessage(
+        "Google registration is not configured. Check the Supabase Google provider settings."
+      );
+      setIsGoogleSubmitting(false);
     }
   }
 
@@ -105,7 +133,7 @@ export default function Home() {
             value={firstName}
             onChange={(event) => setFirstName(event.target.value)}
             required
-            disabled={isSubmitting}
+            disabled={isSubmitting || isGoogleSubmitting}
           />
 
           <label htmlFor="last-name">Last Name</label>
@@ -117,7 +145,7 @@ export default function Home() {
             value={lastName}
             onChange={(event) => setLastName(event.target.value)}
             required
-            disabled={isSubmitting}
+            disabled={isSubmitting || isGoogleSubmitting}
           />
 
           <label htmlFor="email">Email address</label>
@@ -129,13 +157,13 @@ export default function Home() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
-            disabled={isSubmitting}
+            disabled={isSubmitting || isGoogleSubmitting}
           />
 
           <button
             className="pri full"
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isGoogleSubmitting}
           >
             {isSubmitting ? "Submitting..." : "Submit registration"}
           </button>
@@ -147,17 +175,18 @@ export default function Home() {
           <button
             className="google-sign-in"
             type="button"
-            disabled
+            onClick={handleGoogleSignIn}
+            disabled={isSubmitting || isGoogleSubmitting}
             aria-describedby="google-sign-in-status"
           >
             <span className="google-mark" aria-hidden="true">
               G
             </span>
-            Continue with Google
+            {isGoogleSubmitting ? "Connecting to Google..." : "Continue with Google"}
           </button>
 
-          <p id="google-sign-in-status" className="oauth-status">
-            Google sign-in is not available yet.
+          <p id="google-sign-in-status" className="oauth-status" aria-live="polite">
+            Google registration creates a User account pending approval.
           </p>
 
           <p

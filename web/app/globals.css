@@ -252,6 +252,14 @@ a:focus-visible {
   font-size: 0.85rem;
 }
 
+.callback-link {
+  display: inline-block;
+  margin-top: 20px;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 .msg {
   margin: 14px 0 0;
   color: var(--danger);
