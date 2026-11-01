@@ -1,6 +1,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 export default function Home() {
@@ -59,7 +60,7 @@ export default function Home() {
 
   return (
     <main className="registration-page">
-      <a className="logo" href="/" aria-label="Hope, Inc.">
+      <Link className="logo" href="/" aria-label="Hope, Inc.">
         <svg
           viewBox="0 0 32 32"
           width="28"
@@ -78,7 +79,7 @@ export default function Home() {
           />
         </svg>
         <span>Hope, Inc.</span>
-      </a>
+      </Link>
 
       <section
         className="registration-card"
