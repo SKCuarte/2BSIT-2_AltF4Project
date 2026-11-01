@@ -183,7 +183,6 @@ footer { text-align: center; color: var(--muted); padding: 28px 6vw; font-size: 
   overflow: auto;
 }
 .dialog h2 { font-size: 1.5rem; }
-.sub { color: var(--muted); margin: 6px 0 10px; }
 
 .x {                                    
   position: absolute;
@@ -357,7 +356,7 @@ tr:last-child td { border-bottom: 0; }
 
 
 /* Added authentication copy and workflow states; existing page layout is preserved. */
-.dialog .sub {
+.dialog {
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
