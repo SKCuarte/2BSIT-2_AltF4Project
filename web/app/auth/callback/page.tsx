@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase";
 
 type CompletionState =
@@ -10,6 +10,7 @@ type CompletionState =
   | { status: "error"; message: string };
 
 export default function AuthCallbackPage() {
+  const callbackPromise = useRef<Promise<CompletionState> | null>(null);
   const [completion, setCompletion] = useState<CompletionState>({
     status: "loading",
     message: "Completing Google registration...",
@@ -18,11 +19,14 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     let active = true;
 
-    async function completeRegistration() {
+    async function completeRegistration(): Promise<CompletionState> {
       try {
         const supabase = getSupabaseClient();
         const params = new URLSearchParams(window.location.search);
-        const providerError = params.get("error_description");
+        const providerError =
+          params.get("error_description") ??
+          params.get("error") ??
+          params.get("error_code");
 
         if (providerError) {
           throw new Error("Google authorization was cancelled or failed.");
@@ -34,8 +38,11 @@ export default function AuthCallbackPage() {
         }
 
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error || !data.session) {
-          throw new Error("Could not complete Google authorization.");
+        if (error) {
+          throw new Error(error.message);
+        }
+        if (!data.session) {
+          throw new Error("Google authorization did not return a session.");
         }
 
         const response = await fetch("/api/register/google", {
@@ -52,28 +59,27 @@ export default function AuthCallbackPage() {
           );
         }
 
-        if (active) {
-          setCompletion({
-            status: "success",
-            message: result?.created
-              ? "Google registration submitted. Your account is pending approval."
-              : "Your Google account is connected. Existing profile details were not changed.",
-          });
-        }
+        return {
+          status: "success",
+          message: result?.created
+            ? "Google registration submitted. Your account is pending approval."
+            : "Your Google account is connected. Existing profile details were not changed.",
+        };
       } catch (error) {
-        if (active) {
-          setCompletion({
-            status: "error",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Google registration could not be completed.",
-          });
-        }
+        return {
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Google registration could not be completed.",
+        };
       }
     }
 
-    void completeRegistration();
+    callbackPromise.current ??= completeRegistration();
+    void callbackPromise.current.then((result) => {
+      if (active) setCompletion(result);
+    });
 
     return () => {
       active = false;

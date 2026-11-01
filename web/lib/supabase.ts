@@ -8,5 +8,10 @@ export function getSupabaseClient() {
     throw new Error("Supabase environment variables are not configured.");
   }
 
-  return createClient(supabaseUrl, supabaseKey);
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      flowType: "pkce",
+      detectSessionInUrl: false,
+    },
+  });
 }
