@@ -16,6 +16,6 @@
 ## Guide-Specific Notes
 
 - The guide shows five customers, five products, four employees, four jobs, four departments, two job-history rows for E-001, four sales, and five sales-detail rows. It shows no payment records, so PAYMENT is intentionally empty in this sample migration.
-- The guide displays only T-001 detail stamps. The T-002 and T-003 line stamps use the corresponding sale's visible system timestamp because the guide does not show separate line stamps for those transactions.
-- The guide shows current prices for P-001, P-002, and P-005 but not their price-effective dates or PRICEHIST row stamps. The migration uses 2026-10-01, 2026-10-01, and 2026-10-05 respectively so the displayed prices apply to the sample sales; those dates/stamps are inferred. P-003's 2026-02-01 effective date and stamp are visible in its price-history screenshot.
+- The guide displays only T-001 detail stamps. The T-002 and T-003 line stamps use the corresponding sale's visible system timestamp because the guide does not show separate line stamps for those transactions; the task owner confirmed the current values are acceptable on 2026-11-01.
+- The guide shows current prices for P-001, P-002, and P-005 but not their price-effective dates or PRICEHIST row stamps. The migration uses 2026-10-01, 2026-10-01, and 2026-10-05 respectively so the displayed prices apply to the sample sales; those dates/stamps are inferred, and the task owner confirmed the current values are acceptable on 2026-11-01. P-003's 2026-02-01 effective date and stamp are visible in its price-history screenshot.
 - T-002's five P-003 units and T-003's 20 P-001 plus 100 P-005 units are consistent with the guide's per-product report totals and its stated T-002/T-003 totals.
