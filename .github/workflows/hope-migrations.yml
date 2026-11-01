@@ -1,0 +1,57 @@
+name: HOPE migrations
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: hope_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hope_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_ENV: development
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: hope_test
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_SSL: false
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Confirm fresh migration status
+        run: |
+          status="$(npm run db:status --silent)"
+          printf '%s\n' "$status"
+          echo "$status" | grep -Fx 'PENDING 001_hope_base_structure.sql'
+          echo "$status" | grep -Fx 'PENDING 002_hope_sample_data.sql'
+      - name: Apply migrations
+        run: npm run db:migrate
+      - name: Confirm applied migration status
+        run: |
+          status="$(npm run db:status --silent)"
+          printf '%s\n' "$status"
+          echo "$status" | grep -Fx 'APPLIED 001_hope_base_structure.sql'
+          echo "$status" | grep -Fx 'APPLIED 002_hope_sample_data.sql'
+      - name: Verify HOPE fixtures and constraints
+        run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/hope_verification.sql

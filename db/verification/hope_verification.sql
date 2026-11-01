@@ -151,3 +151,138 @@ SELECT 'PRICEHIST -> PRODUCT', COUNT(*)
 FROM public."PRICEHIST" ph
 LEFT JOIN public."PRODUCT" p ON p.product_id = ph.product_id
 WHERE p.product_id IS NULL;
+
+-- 7) Fail the script if any expected count or business rule is not met.
+DO $$
+DECLARE
+  expected RECORD;
+  actual_count BIGINT;
+  actual_total NUMERIC(12,2);
+  orphan RECORD;
+BEGIN
+  FOR expected IN
+    SELECT * FROM (VALUES
+      ('DEPARTMENT', 4), ('JOB', 4), ('EMPLOYEE', 4), ('JOBHISTORY', 2),
+      ('CUSTOMER', 5), ('PRODUCT', 5), ('PRICEHIST', 4), ('SALES', 4),
+      ('SALESDETAIL', 5), ('PAYMENT', 0)
+    ) AS counts(table_name, expected_count)
+  LOOP
+    EXECUTE format('SELECT COUNT(*) FROM public.%I', expected.table_name)
+    INTO actual_count;
+    IF actual_count <> expected.expected_count THEN
+      RAISE EXCEPTION '% row count: expected %, got %',
+        expected.table_name, expected.expected_count, actual_count;
+    END IF;
+  END LOOP;
+
+  FOR expected IN
+    SELECT * FROM (VALUES
+      ('T-001', 234.50::NUMERIC),
+      ('T-002', 140.00::NUMERIC),
+      ('T-003', 510.00::NUMERIC)
+    ) AS totals(sale_id, expected_total)
+  LOOP
+    SELECT ROUND(COALESCE(SUM(sd.quantity * price.unit_price), 0), 2)
+    INTO actual_total
+    FROM public."SALES" s
+    JOIN public."SALESDETAIL" sd
+      ON sd.sale_id = s.sale_id AND sd.status = 'Active'
+    LEFT JOIN LATERAL (
+      SELECT ph.unit_price
+      FROM public."PRICEHIST" ph
+      WHERE ph.product_id = sd.product_id
+        AND ph.effective_date <= s.sale_date
+        AND ph.status = 'Active'
+      ORDER BY ph.effective_date DESC
+      LIMIT 1
+    ) price ON TRUE
+    WHERE s.sale_id = expected.sale_id AND s.status = 'Active';
+
+    IF actual_total IS DISTINCT FROM expected.expected_total THEN
+      RAISE EXCEPTION '% total: expected %, got %',
+        expected.sale_id, expected.expected_total, actual_total;
+    END IF;
+  END LOOP;
+
+  SELECT ROUND(COALESCE(SUM(sd.quantity * price.unit_price), 0), 2)
+  INTO actual_total
+  FROM public."SALES" s
+  JOIN public."SALESDETAIL" sd
+    ON sd.sale_id = s.sale_id AND sd.status = 'Active'
+  LEFT JOIN LATERAL (
+    SELECT ph.unit_price
+    FROM public."PRICEHIST" ph
+    WHERE ph.product_id = sd.product_id
+      AND ph.effective_date <= s.sale_date
+      AND ph.status = 'Active'
+    ORDER BY ph.effective_date DESC
+    LIMIT 1
+  ) price ON TRUE
+  WHERE s.status = 'Active';
+  IF actual_total IS DISTINCT FROM 884.50::NUMERIC THEN
+    RAISE EXCEPTION 'Active sales total: expected 884.50, got %', actual_total;
+  END IF;
+
+  SELECT ph.unit_price INTO actual_total
+  FROM public."PRICEHIST" ph
+  WHERE ph.product_id = 'P-003'
+    AND ph.status = 'Active'
+    AND ph.effective_date <= CURRENT_DATE
+  ORDER BY ph.effective_date DESC
+  LIMIT 1;
+  IF actual_total IS DISTINCT FROM 28.00::NUMERIC THEN
+    RAISE EXCEPTION 'P-003 current price: expected 28.00, got %', actual_total;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public."PRICEHIST"
+    WHERE product_id = 'P-004'
+      AND status = 'Active'
+      AND effective_date <= CURRENT_DATE
+  ) THEN
+    RAISE EXCEPTION 'P-004 unexpectedly has a current active price';
+  END IF;
+
+  FOR orphan IN
+    SELECT 'JOBHISTORY -> EMPLOYEE' AS check_name, COUNT(*) AS orphan_count
+    FROM public."JOBHISTORY" h LEFT JOIN public."EMPLOYEE" e ON e.employee_id = h.employee_id
+    WHERE e.employee_id IS NULL
+    UNION ALL
+    SELECT 'JOBHISTORY -> JOB', COUNT(*)
+    FROM public."JOBHISTORY" h LEFT JOIN public."JOB" j ON j.job_id = h.job_id
+    WHERE j.job_id IS NULL
+    UNION ALL
+    SELECT 'JOBHISTORY -> DEPARTMENT', COUNT(*)
+    FROM public."JOBHISTORY" h LEFT JOIN public."DEPARTMENT" d ON d.department_id = h.department_id
+    WHERE h.department_id IS NOT NULL AND d.department_id IS NULL
+    UNION ALL
+    SELECT 'SALES -> CUSTOMER', COUNT(*)
+    FROM public."SALES" s LEFT JOIN public."CUSTOMER" c ON c.customer_id = s.customer_id
+    WHERE s.customer_id IS NOT NULL AND c.customer_id IS NULL
+    UNION ALL
+    SELECT 'SALES -> EMPLOYEE', COUNT(*)
+    FROM public."SALES" s LEFT JOIN public."EMPLOYEE" e ON e.employee_id = s.employee_id
+    WHERE s.employee_id IS NOT NULL AND e.employee_id IS NULL
+    UNION ALL
+    SELECT 'SALESDETAIL -> SALES', COUNT(*)
+    FROM public."SALESDETAIL" sd LEFT JOIN public."SALES" s ON s.sale_id = sd.sale_id
+    WHERE s.sale_id IS NULL
+    UNION ALL
+    SELECT 'SALESDETAIL -> PRODUCT', COUNT(*)
+    FROM public."SALESDETAIL" sd LEFT JOIN public."PRODUCT" p ON p.product_id = sd.product_id
+    WHERE p.product_id IS NULL
+    UNION ALL
+    SELECT 'PAYMENT -> SALES', COUNT(*)
+    FROM public."PAYMENT" p LEFT JOIN public."SALES" s ON s.sale_id = p.sale_id
+    WHERE p.sale_id IS NOT NULL AND s.sale_id IS NULL
+    UNION ALL
+    SELECT 'PRICEHIST -> PRODUCT', COUNT(*)
+    FROM public."PRICEHIST" ph LEFT JOIN public."PRODUCT" p ON p.product_id = ph.product_id
+    WHERE p.product_id IS NULL
+  LOOP
+    IF orphan.orphan_count <> 0 THEN
+      RAISE EXCEPTION '% has % orphan row(s)', orphan.check_name, orphan.orphan_count;
+    END IF;
+  END LOOP;
+END;
+$$;
