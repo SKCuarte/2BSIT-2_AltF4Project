@@ -11,7 +11,7 @@ package.json
 package-lock.json       # created by npm install; commit it for repeatable installs
 db/
    README.md
-   migrations/           # numbered forward-only SQL; no HOPE schema migrations yet
+   migrations/           # numbered forward-only SQL; HOPE base structure migration
    seeds/                # numbered idempotent SQL seed files
    scripts/
       db.js               # migrate, status, and guarded dev reset
@@ -89,17 +89,22 @@ Expected: psql reports `CREATE ROLE`, `CREATE DATABASE`, and `GRANT`; `\password
    ```text
    npm run db:status
    ```
-   Expected on this initial setup: `No migration files found.` (No HOPE table migrations are included in this task.)
+   Expected on a fresh checkout before migration: both `001_hope_base_structure.sql` and `002_hope_sample_data.sql` are `PENDING`.
 3. Apply migrations:
    ```text
    npm run db:migrate
    ```
-   Expected initially: `No pending migrations.` The runner creates `public.schema_migrations` if needed.
-4. Run repeatable seed scripts:
+   Expected: both migrations are reported as applied and recorded in `public.schema_migrations`, in filename order.
+4. Confirm migration status:
+   ```text
+   npm run db:status
+   ```
+   Expected: `APPLIED 001_hope_base_structure.sql` and `APPLIED 002_hope_sample_data.sql`.
+5. Run repeatable seed scripts:
    ```text
    npm run db:seed
    ```
-   Expected initially: `No seed files found.`
+   Expected: `No seed files found.` The HOPE sample records are part of the numbered migrations, not the separate repeatable seed directory.
 
 All runner commands are npm scripts and use the same syntax on Windows, macOS, and Linux. Migration files are ordered lexically, SHA-256 checked against the exact applied file, and run in individual transactions. The seed runner replays every ordered SQL seed in its own transaction, so each seed must use stable keys and idempotent inserts such as `ON CONFLICT DO NOTHING` or a deliberate upsert.
 
