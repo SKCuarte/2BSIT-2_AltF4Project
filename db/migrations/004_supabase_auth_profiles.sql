@@ -1,6 +1,7 @@
 DO $$
 DECLARE
     existing_users BIGINT;
+    legacy_profiles BIGINT;
 BEGIN
     IF to_regclass('auth.users') IS NULL THEN
         RAISE EXCEPTION 'Supabase Auth schema auth.users is required before linking app_user';
@@ -9,6 +10,13 @@ BEGIN
     SELECT COUNT(*) INTO existing_users FROM public.app_user;
     IF existing_users <> 0 THEN
         RAISE EXCEPTION 'Cannot apply Supabase Auth profile migration: public.app_user must be empty; reconcile % existing rows with auth.users before retrying', existing_users;
+    END IF;
+
+    IF to_regclass('public.profiles') IS NOT NULL THEN
+        EXECUTE 'SELECT COUNT(*) FROM public.profiles' INTO legacy_profiles;
+        IF legacy_profiles <> 0 THEN
+            RAISE EXCEPTION 'Cannot apply Supabase Auth profile migration: public.profiles must be empty; reconcile % existing rows with app_user before retrying', legacy_profiles;
+        END IF;
     END IF;
 END;
 $$;

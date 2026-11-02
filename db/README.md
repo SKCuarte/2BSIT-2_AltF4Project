@@ -28,6 +28,8 @@ db/
 
 **Recommendation: local PostgreSQL for daily development, plus one hosted dev database for integration.** Keep both at PostgreSQL 15+ and apply the same numbered migrations. Use separate credentials per environment; never put hosted credentials in the repository or share them in chat. Do not point `db:reset` at the hosted database.
 
+Before applying the baseline migrations to an existing Supabase project, compare its public schema with the migration files. PostgreSQL treats quoted uppercase names such as `"CUSTOMER"` as different from lowercase `customer`; applying the baseline to a project with lowercase legacy tables can create a second set of tables. Migration 004 also refuses populated `app_user` or legacy `profiles` tables. Use a fresh development project or a separately reviewed forward-only reconciliation plan; do not apply the baseline to Production.
+
 ## Install PostgreSQL
 
 1. Install PostgreSQL 15 or newer using the official installer for your operating system: [postgresql.org/download](https://www.postgresql.org/download/). Keep the default port `5432` unless it is already in use. On Windows, the installer can also install pgAdmin; on macOS and Linux, follow the package instructions for your distribution.

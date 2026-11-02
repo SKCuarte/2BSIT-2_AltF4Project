@@ -47,6 +47,7 @@ jobs:
           guard_output="$(psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/test_supabase_auth_migration_guard.psql 2>&1)"
           printf '%s\n' "$guard_output"
           echo "$guard_output" | grep -F 'public.app_user must be empty'
+          echo "$guard_output" | grep -F 'public.profiles must be empty'
       - name: Confirm fresh migration status
         run: |
           status="$(npm run db:status --silent)"

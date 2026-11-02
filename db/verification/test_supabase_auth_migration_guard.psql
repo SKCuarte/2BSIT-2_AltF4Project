@@ -5,6 +5,7 @@ DROP VIEW IF EXISTS public.v_user_effective_rights, public.v_rights_count_by_mod
 DROP TABLE IF EXISTS
     public.user_permission,
     public.app_user,
+    public.profiles,
     public.rights,
     public.module,
     public.role,
@@ -63,6 +64,45 @@ END;
 $$;
 \else
 \echo 'FAIL: migration 004 accepted a non-empty app_user table'
+\quit 1
+\endif
+
+DELETE FROM public.app_user WHERE email = 'legacy.fixture@example.invalid';
+CREATE TABLE public.profiles (id UUID PRIMARY KEY);
+INSERT INTO public.profiles (id)
+VALUES ('00000000-0000-4000-8000-000000000004');
+
+SAVEPOINT before_legacy_profiles_migration;
+\set ON_ERROR_STOP off
+\i db/migrations/004_supabase_auth_profiles.sql
+\set profiles_migration_failed :ERROR
+\set ON_ERROR_STOP on
+ROLLBACK TO SAVEPOINT before_legacy_profiles_migration;
+
+\if :profiles_migration_failed
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM public.app_user) THEN
+        RAISE EXCEPTION 'Migration guard changed app_user while refusing legacy profiles';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = '00000000-0000-4000-8000-000000000004'
+    ) THEN
+        RAISE EXCEPTION 'Migration guard failed to preserve the legacy profile';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'app_user'
+          AND column_name IN ('auth_user_id', 'approval_status')
+    ) THEN
+        RAISE EXCEPTION 'Migration guard altered app_user before refusing legacy profiles';
+    END IF;
+    RAISE NOTICE 'PASS: migration 004 refused populated legacy profiles and preserved their row';
+END;
+$$;
+\else
+\echo 'FAIL: migration 004 accepted populated legacy profiles'
 \quit 1
 \endif
 
