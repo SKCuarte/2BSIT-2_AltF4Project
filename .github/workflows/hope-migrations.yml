@@ -51,6 +51,7 @@ jobs:
           echo "$status" | grep -Fx 'PENDING 003_user_management.sql'
           echo "$status" | grep -Fx 'PENDING 004_supabase_auth_profiles.sql'
           echo "$status" | grep -Fx 'PENDING 005_gate_rights_by_approval.sql'
+          echo "$status" | grep -Fx 'PENDING 005_gate_rights_by_approval.sql'
       - name: Apply migrations
         run: npm run db:migrate
       - name: Confirm applied migration status
@@ -61,6 +62,7 @@ jobs:
           echo "$status" | grep -Fx 'APPLIED 002_hope_sample_data.sql'
           echo "$status" | grep -Fx 'APPLIED 003_user_management.sql'
           echo "$status" | grep -Fx 'APPLIED 004_supabase_auth_profiles.sql'
+          echo "$status" | grep -Fx 'APPLIED 005_gate_rights_by_approval.sql'
           echo "$status" | grep -Fx 'APPLIED 005_gate_rights_by_approval.sql'
       - name: Verify HOPE fixtures and constraints
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/hope_verification.sql
