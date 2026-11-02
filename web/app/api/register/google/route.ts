@@ -108,6 +108,11 @@ export async function POST(request: Request) {
 
   if (insertError) {
     console.error("Google registration app_user creation failed:", insertError.message);
+    const { error: cleanupError } =
+      await adminClient.auth.admin.deleteUser(authData.user.id);
+    if (cleanupError) {
+      console.error("Unlinked Google Auth user cleanup failed:", cleanupError.message);
+    }
     return NextResponse.json(
       { error: "Unable to save the Google registration profile. Please retry." },
       { status: 500 }
@@ -122,6 +127,11 @@ export async function POST(request: Request) {
 
   if (profileError || !appUser) {
     console.error("Google registration app_user lookup failed:", profileError?.message);
+    const { error: cleanupError } =
+      await adminClient.auth.admin.deleteUser(authData.user.id);
+    if (cleanupError) {
+      console.error("Unlinked Google Auth user cleanup failed:", cleanupError.message);
+    }
     return NextResponse.json(
       { error: "Registration profile is not ready. Please retry." },
       { status: 500 }
