@@ -4,4 +4,4 @@ Add forward-only PostgreSQL migrations here as `NNN_description.sql` (for exampl
 
 Never change or remove an applied migration. Add a new numbered migration instead. Do not put `BEGIN` or `COMMIT` inside migration files; the runner owns the transaction. Audit logging objects are excluded here and reserved for Task 6.
 
-`004_supabase_auth_profiles.sql` requires `public.app_user` to be empty before it adds the required Auth UUID FK and removes legacy password columns. It aborts before changing the schema when rows exist. Reconcile existing profiles with Supabase Auth through a separately reviewed backfill plan; never copy password hashes into `auth.users` or bypass the guard.
+`004_supabase_auth_profiles.sql` requires `public.app_user` to be empty before it adds the required Auth UUID FK and removes legacy password columns. It aborts before changing the schema when rows exist. Reconcile existing profiles with Supabase Auth through a separately reviewed backfill plan; never copy password hashes into `auth.users` or bypass the guard. Registration APIs should write to `app_user` by `auth_user_id`; delete an unlinked Auth account if its profile insert fails.
