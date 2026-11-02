@@ -58,9 +58,9 @@ export async function POST(request: Request) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: existingProfile, error: lookupError } = await adminClient
-    .from("profiles")
-    .select("id")
-    .eq("id", authData.user.id)
+    .from("app_user")
+    .select("id, approval_status, is_blocked")
+    .eq("auth_user_id", authData.user.id)
     .maybeSingle();
 
   if (lookupError) {
@@ -72,7 +72,14 @@ export async function POST(request: Request) {
   }
 
   if (existingProfile) {
-    return NextResponse.json({ created: false }, { status: 200 });
+    return NextResponse.json(
+      {
+        created: false,
+        approvalStatus: existingProfile.approval_status,
+        blocked: existingProfile.is_blocked,
+      },
+      { status: 200 }
+    );
   }
 
   const email = authData.user.email?.trim().toLowerCase();
@@ -88,22 +95,45 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: insertError } = await adminClient.from("profiles").insert({
-    id: authData.user.id,
-    first_name: firstName,
-    last_name: lastName,
-    email,
-    role: "user",
-    approval_status: "pending",
-  });
+  const { error: insertError } = await adminClient.from("app_user").upsert(
+    {
+      auth_user_id: authData.user.id,
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      approval_status: "Pending",
+    },
+    { onConflict: "auth_user_id", ignoreDuplicates: true }
+  );
 
   if (insertError) {
-    console.error("Google registration profile creation failed:", insertError.message);
+    console.error("Google registration app_user creation failed:", insertError.message);
     return NextResponse.json(
-      { error: "Unable to save the Google registration profile." },
+      { error: "Unable to save the Google registration profile. Please retry." },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({ created: true }, { status: 201 });
+  const { data: appUser, error: profileError } = await adminClient
+    .from("app_user")
+    .select("approval_status, is_blocked")
+    .eq("auth_user_id", authData.user.id)
+    .single();
+
+  if (profileError || !appUser) {
+    console.error("Google registration app_user lookup failed:", profileError?.message);
+    return NextResponse.json(
+      { error: "Registration profile is not ready. Please retry." },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json(
+    {
+      created: true,
+      approvalStatus: appUser.approval_status,
+      blocked: appUser.is_blocked,
+    },
+    { status: 201 }
+  );
 }

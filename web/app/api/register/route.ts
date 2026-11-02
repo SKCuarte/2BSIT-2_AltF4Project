@@ -112,14 +112,16 @@ export async function POST(request: Request) {
   const authUserId = inviteData.user.id;
 
   const { error: profileError } = await supabase
-    .from("profiles")
-    .insert({
-      id: authUserId,
+    .from("app_user")
+    .upsert({
+      auth_user_id: authUserId,
       first_name: firstName,
       last_name: lastName,
       email,
-      role: "user",
-      approval_status: "pending",
+      approval_status: "Pending",
+    }, {
+      onConflict: "auth_user_id",
+      ignoreDuplicates: true,
     });
 
   if (profileError) {
