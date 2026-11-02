@@ -1,3 +1,18 @@
+DO $$
+DECLARE
+    existing_users BIGINT;
+BEGIN
+    IF to_regclass('auth.users') IS NULL THEN
+        RAISE EXCEPTION 'Supabase Auth schema auth.users is required before linking app_user';
+    END IF;
+
+    SELECT COUNT(*) INTO existing_users FROM public.app_user;
+    IF existing_users <> 0 THEN
+        RAISE EXCEPTION 'Cannot apply Supabase Auth profile migration: public.app_user must be empty; reconcile % existing rows with auth.users before retrying', existing_users;
+    END IF;
+END;
+$$;
+
 ALTER TABLE public.app_user
     ADD COLUMN auth_user_id UUID NOT NULL UNIQUE
         REFERENCES auth.users(id) ON DELETE RESTRICT,

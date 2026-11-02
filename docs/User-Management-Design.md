@@ -26,6 +26,10 @@ erDiagram
 
 `auth.users.id` is the Supabase Auth identity linked by `app_user.auth_user_id`; `app_user.id` remains the BIGINT application key. Passwords and reset tokens are managed only by Supabase Auth and are not stored in `app_user`. `approval_status` defaults to `Pending` and allows `Pending`, `Approved`, or `Rejected`; the registration API should create profiles as Pending, `v_user_effective_rights.granted` remains false until approval is Approved, and the server must check approval before granting application access. The stored role name remains exactly `User` (capital U) for new registrations.
 
+Migration 004 requires `public.app_user` to be empty. It checks this before adding the NOT NULL Auth FK or dropping `password_hash` and `must_set_password`; the migration runner wraps it in a transaction. If the check fails, no schema changes commit. For existing accounts, stop and prepare a reviewed mapping to `auth.users.id`; migrate credentials through Supabase Auth invitation/password-reset flows rather than copying old hashes. Do not bypass the guard or drop credential columns manually.
+
+Migration `004_supabase_auth_profiles.sql` requires `public.app_user` to be empty. It checks this before adding the NOT NULL Auth foreign key or dropping the legacy password columns, and the migration runner wraps the file in a transaction. If the check fails, no schema changes commit. For an environment with existing profiles, stop and prepare a reviewed backfill that explicitly maps each account to `auth.users.id`; move authentication to Supabase Auth through its invitation/reset flow rather than copying old password hashes. Do not bypass the guard or drop the columns manually.
+
 `SALES.employee_id` (called `empNo` in the legacy guide/script) identifies the salesperson for a transaction. It is not the login identity. `app_user.employee_id` is an optional one-to-one link for staff who have an ERP login; it may be NULL for administrators or other accounts without an employee record. A future audit actor should identify `app_user`, not infer identity from the salesperson on a sale.
 
 ## Authorization and Soft Delete
