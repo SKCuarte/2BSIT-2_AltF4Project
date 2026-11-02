@@ -1,4 +1,6 @@
--- Run after all migrations in a clean development/test database.
+-- Run after all migrations in a clean local/test database with auth.users fixtures
+-- provisioned separately. CI uses a minimal auth.users stub; never insert test IDs
+-- directly into a shared or production Supabase Auth schema.
 -- Expected catalogue: 3 roles, 5 modules, 36 rights, and the module counts below.
 -- The transaction rolls back its temporary user and permission fixtures.
 BEGIN;
@@ -34,6 +36,7 @@ DECLARE
     test_superadmin_id BIGINT;
     stored_email TEXT;
     stored_role TEXT;
+    stored_approval_status TEXT;
     permission_status TEXT;
     permission_stamp TEXT;
     denied BOOLEAN;
@@ -64,30 +67,61 @@ BEGIN
     SELECT id INTO superadmin_role_id FROM public.role WHERE name = 'Superadmin';
     SELECT id INTO test_right_id FROM public.rights WHERE code = 'CUSTOMER_ADD';
 
-    INSERT INTO public.app_user (first_name, last_name, email)
-    VALUES ('Verify', 'DefaultRole', 'Verify.User@Example.invalid')
+    INSERT INTO public.app_user (first_name, last_name, email, auth_user_id)
+    VALUES ('Verify', 'DefaultRole', 'Verify.User@Example.invalid', '00000000-0000-4000-8000-000000000001')
     RETURNING id INTO test_user_id;
 
-    SELECT email, role.name INTO stored_email, stored_role
+    SELECT account.email, role.name, account.approval_status
+    INTO stored_email, stored_role, stored_approval_status
     FROM public.app_user account
     JOIN public.role role ON role.id = account.role_id
     WHERE account.id = test_user_id;
-    IF stored_email <> 'verify.user@example.invalid' OR stored_role <> 'User' THEN
-        RAISE EXCEPTION 'Email normalization or default User role failed';
+    IF stored_email <> 'verify.user@example.invalid'
+        OR stored_role <> 'User'
+        OR stored_approval_status <> 'Pending' THEN
+        RAISE EXCEPTION 'Email normalization, default User role, or Pending approval default failed';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM public.v_user_effective_rights
+        WHERE user_id = test_user_id AND granted
+    ) THEN
+        RAISE EXCEPTION 'Pending app_user must not receive effective rights';
     END IF;
 
-    INSERT INTO public.app_user (first_name, last_name, email, role_id)
-    VALUES ('Verify', 'Admin', 'verify.admin@example.invalid', admin_role_id)
+    INSERT INTO public.app_user (first_name, last_name, email, role_id, auth_user_id, approval_status)
+    VALUES ('Verify', 'Admin', 'verify.admin@example.invalid', admin_role_id,
+        '00000000-0000-4000-8000-000000000002', 'Approved')
     RETURNING id INTO test_admin_id;
-    INSERT INTO public.app_user (first_name, last_name, email, role_id)
-    VALUES ('Verify', 'Superadmin', 'verify.superadmin@example.invalid', superadmin_role_id)
+    INSERT INTO public.app_user (first_name, last_name, email, role_id, auth_user_id, approval_status)
+    VALUES ('Verify', 'Superadmin', 'verify.superadmin@example.invalid', superadmin_role_id,
+        '00000000-0000-4000-8000-000000000003', 'Approved')
     RETURNING id INTO test_superadmin_id;
+
+    denied := FALSE;
+    BEGIN
+        UPDATE public.app_user SET approval_status = 'Waiting' WHERE id = test_user_id;
+    EXCEPTION WHEN check_violation THEN
+        denied := TRUE;
+    END;
+    IF NOT denied THEN
+        RAISE EXCEPTION 'Invalid approval_status unexpectedly succeeded';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'app_user'
+          AND column_name IN ('password_hash', 'must_set_password')
+    ) THEN
+        RAISE EXCEPTION 'Supabase-managed password columns remain in app_user';
+    END IF;
 
     PERFORM set_config('app.user_id', test_admin_id::TEXT, TRUE);
     INSERT INTO public.user_permission (user_id, right_id, granted_by)
     VALUES (test_user_id, test_right_id, test_admin_id);
 
-    UPDATE public.app_user SET is_blocked = TRUE WHERE id = test_user_id;
+    UPDATE public.app_user
+    SET is_blocked = TRUE, approval_status = 'Approved'
+    WHERE id = test_user_id;
     SELECT status, stamp INTO permission_status, permission_stamp
     FROM public.user_permission permission
     WHERE permission.user_id = test_user_id AND permission.right_id = test_right_id;
@@ -97,7 +131,7 @@ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM public.v_user_effective_rights
         WHERE user_id = test_user_id AND right_code = 'CUSTOMER_ADD'
-          AND is_blocked AND granted
+                    AND approval_status = 'Approved' AND is_blocked AND granted
     ) THEN
         RAISE EXCEPTION 'Blocked state must remain separate from permission grants';
     END IF;

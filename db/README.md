@@ -89,17 +89,17 @@ Expected: psql reports `CREATE ROLE`, `CREATE DATABASE`, and `GRANT`; `\password
    ```text
    npm run db:status
    ```
-   Expected on a fresh checkout before migration: `001_hope_base_structure.sql`, `002_hope_sample_data.sql`, and `003_user_management.sql` are `PENDING`.
+   Expected on a fresh checkout before migration: migrations `001` through `005` are `PENDING`.
 3. Apply migrations:
    ```text
    npm run db:migrate
    ```
-   Expected: all three migrations are reported as applied and recorded in `public.schema_migrations`, in filename order.
+   Expected: all five migrations are reported as applied and recorded in `public.schema_migrations`, in filename order.
 4. Confirm migration status:
    ```text
    npm run db:status
    ```
-   Expected: `APPLIED 001_hope_base_structure.sql`, `APPLIED 002_hope_sample_data.sql`, and `APPLIED 003_user_management.sql`.
+   Expected: all five migrations are `APPLIED`, including `004_supabase_auth_profiles.sql` and `005_gate_rights_by_approval.sql`.
 5. Run repeatable seed scripts:
    ```text
    npm run db:seed
