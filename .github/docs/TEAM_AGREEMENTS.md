@@ -46,10 +46,11 @@ A deliverable, feature, or task is formally considered **Done** only when all of
 - **UI/UX Designer**: Layout designs, sidebar components, user flow mockups, and design system alignment.
 
 ### PR Delivery Minimums & Evaluation Rules
-- **Scrum Master**: Minimum **5 PRs** across repository governance and board configuration.
-- **Database Administrator**: Minimum **6 PRs** across schema, migration, and seed tasks.
-- **Developer**: Minimum **8 PRs** across core scaffolding, API, and feature implementations.
-- **Tester / UI/UX**: Delivered through assigned documentation, design spec, and test execution PRs.
+* **Developer**: Minimum **8 PRs/tasks** across core scaffolding, API, and feature implementations.
+* **Database Administrator (DBA)**: Minimum **6 PRs/tasks** across schema, migration, and seed tasks.
+* **Tester**: Minimum **6 PRs/tasks** across test plan creation, test execution reports, and permission/edge-case matrices.
+* **UI/UX Designer**: Minimum **5 PRs/tasks** across wireframes, layout specs, component designs, and design system alignment.
+* **Scrum Master**: Minimum **5 PRs/tasks** across board configuration, repository guidelines, workflows, and governance documentation.
 
 ### Grading & Assessment Criteria
 - Deliverables are evaluated based on **PR quality**, adherence to the **Definition of Done**, accurate issue linking, and overall contribution consistency throughout the sprint.
@@ -63,10 +64,12 @@ To mark any user story or feature complete, the following testing threshold must
 
 ---
 
-## Role-Based Contribution & PR Guidelines
+### Role-Based Contribution & PR Guidelines
 
-To ensure fair evaluation across all project roles:
+To ensure fair evaluation across all project roles, members are assessed based on their planned Sprint 1 deliverables:
 
-* **Developer & DBA**: Minimum of **1 to 2 merged PRs per sprint** containing code, migrations, or database schema scripts.
-* **Tester (QA)**: Evaluated via submission of test plans, test execution reports, and bug reports/issues. Must submit at least **1 PR containing documented test specifications/matrices** or contribute inline reviews and sign-offs on functional PRs.
-* **UI/UX Designer**: Evaluated via wireframes, design specifications, and UI asset integration. Must submit at least **1 PR containing layout templates, styling assets, or UI documentation**, or co-author visual integration PRs with the lead developer.
+* **Developer**: Evaluated against **8 planned PRs/tasks** covering scaffolding, API routes, and UI components.
+* **DB Admin**: Evaluated against **6 planned PRs/tasks** covering database schema, migrations, seed data, and audit logs.
+* **Tester (QA)**: Evaluated against **6 planned PRs/tasks** covering test plan creation, permission matrix testing, edge-case validation, and test reports. Must submit documented test matrices or contribute inline reviews and sign-offs on functional PRs.
+* **UI/UX Designer**: Evaluated against **5 planned PRs/tasks** covering wireframes, design specifications, layout templates, and styling assets.
+* **Scrum Master**: Evaluated against **5 planned PRs/tasks** covering repository governance, board setups, and working agreements.
