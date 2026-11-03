@@ -10,7 +10,11 @@
     "db:migrate": "node db/scripts/db.js migrate",
     "db:status": "node db/scripts/db.js status",
     "db:reset": "node db/scripts/db.js reset",
-    "db:seed": "node db/scripts/seed.js"
+    "db:seed": "node db/scripts/seed.js",
+    "db:seed:team": "node db/scripts/seed-team.js",
+    "db:seed:dev": "node db/scripts/seed-dev-users.js",
+    "db:setup-links": "node db/scripts/issue-setup-links.js",
+    "check:secrets": "node db/scripts/check-sql-secrets.js"
   },
   "dependencies": {
     "dotenv": "16.4.7",

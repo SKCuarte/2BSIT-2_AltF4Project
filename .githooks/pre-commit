@@ -1,0 +1,2 @@
+#!/bin/sh
+node db/scripts/check-sql-secrets.js

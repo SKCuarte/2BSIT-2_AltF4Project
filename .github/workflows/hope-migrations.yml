@@ -76,6 +76,14 @@ jobs:
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/hope_verification.sql
       - name: Verify user-management schema and permissions
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql
+      - name: Seed catalogue twice to prove idempotency
+        run: |
+          npm run db:seed
+          npm run db:seed
+      - name: Verify seed counts
+        run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/seed_verification.sql
+      - name: Check committed SQL for secrets
+        run: node db/scripts/check-sql-secrets.js --all
       - name: Verify password reset token lifecycle and access
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/password_reset_token_verification.sql
       - name: Verify password reset token supports UUID user IDs
