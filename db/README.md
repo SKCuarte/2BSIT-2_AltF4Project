@@ -28,6 +28,8 @@ db/
 
 **Recommendation: local PostgreSQL for daily development, plus one hosted dev database for integration.** Keep both at PostgreSQL 15+ and apply the same numbered migrations. Use separate credentials per environment; never put hosted credentials in the repository or share them in chat. Do not point `db:reset` at the hosted database.
 
+Before applying the baseline migrations to an existing Supabase project, compare its public schema with the migration files. PostgreSQL treats quoted uppercase names such as `"CUSTOMER"` as different from lowercase `customer`; applying the baseline to a project with lowercase legacy tables can create a second set of tables. Migration 004 also refuses populated `app_user` or legacy `profiles` tables. Use a fresh development project or a separately reviewed forward-only reconciliation plan; do not apply the baseline to Production.
+
 ## Install PostgreSQL
 
 1. Install PostgreSQL 15 or newer using the official installer for your operating system: [postgresql.org/download](https://www.postgresql.org/download/). Keep the default port `5432` unless it is already in use. On Windows, the installer can also install pgAdmin; on macOS and Linux, follow the package instructions for your distribution.
@@ -89,24 +91,67 @@ Expected: psql reports `CREATE ROLE`, `CREATE DATABASE`, and `GRANT`; `\password
    ```text
    npm run db:status
    ```
-   Expected on a fresh checkout before migration: both `001_hope_base_structure.sql` and `002_hope_sample_data.sql` are `PENDING`.
+   Expected on a fresh checkout before migration: migrations `001` through `006` are `PENDING`.
 3. Apply migrations:
    ```text
    npm run db:migrate
    ```
-   Expected: both migrations are reported as applied and recorded in `public.schema_migrations`, in filename order.
+   Expected: all six migrations are reported as applied and recorded in `public.schema_migrations`, in filename order.
 4. Confirm migration status:
    ```text
    npm run db:status
    ```
-   Expected: `APPLIED 001_hope_base_structure.sql` and `APPLIED 002_hope_sample_data.sql`.
+   Expected: all six migrations are `APPLIED`, including `004_supabase_auth_profiles.sql`, `005_gate_rights_by_approval.sql`, and `006_lock_down_user_management_api_access.sql`.
 5. Run repeatable seed scripts:
    ```text
    npm run db:seed
    ```
-   Expected: `No seed files found.` The HOPE sample records are part of the numbered migrations, not the separate repeatable seed directory.
+   Expected: `No seed files found.` The HOPE and permission catalogue fixtures are part of the numbered migrations, not the separate repeatable seed directory.
 
 All runner commands are npm scripts and use the same syntax on Windows, macOS, and Linux. Migration files are ordered lexically, SHA-256 checked against the exact applied file, and run in individual transactions. The seed runner replays every ordered SQL seed in its own transaction, so each seed must use stable keys and idempotent inserts such as `ON CONFLICT DO NOTHING` or a deliberate upsert.
+
+## Local Supabase Auth Stub
+
+Use this only with a disposable local `hope_dev` database when reproducing migrations and verification. It creates a minimal `auth.users` reference table and API-role stand-ins; it is not a Supabase Auth service. Never create these mock identities in a hosted or Production Supabase project.
+
+Connect as the local PostgreSQL administrator:
+
+```text
+psql -h localhost -U postgres -d hope_dev
+```
+
+Run the following once in that disposable database before `npm run db:migrate`:
+
+```sql
+DO $$
+BEGIN
+   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+      EXECUTE 'CREATE ROLE anon NOLOGIN';
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+      EXECUTE 'CREATE ROLE authenticated NOLOGIN';
+   END IF;
+   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+      EXECUTE 'CREATE ROLE service_role NOLOGIN BYPASSRLS';
+   END IF;
+END;
+$$;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY);
+INSERT INTO auth.users (id) VALUES
+   ('00000000-0000-4000-8000-000000000001'),
+   ('00000000-0000-4000-8000-000000000002'),
+   ('00000000-0000-4000-8000-000000000003')
+ON CONFLICT (id) DO NOTHING;
+GRANT USAGE ON SCHEMA auth TO hope_app;
+GRANT REFERENCES ON TABLE auth.users TO hope_app;
+\quit
+```
+
+Then apply migrations and run `db/verification/user_management_verification.sql` as documented below. Migration 004 requires both `app_user` and any existing `profiles` table to be empty.
+
+Task 3 migration 006 enables RLS and revokes direct privileges on `app_user` and `user_permission` from `PUBLIC`, `anon`, and `authenticated`. Only the server-side `service_role` keeps direct table/identity-sequence access; never expose its secret key to browser code.
 
 ## Disposable Runner Smoke Test
 

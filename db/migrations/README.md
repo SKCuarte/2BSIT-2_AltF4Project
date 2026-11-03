@@ -1,5 +1,9 @@
 # Migrations
 
-Add forward-only PostgreSQL migrations here as `NNN_description.sql` (for example, `001_create_users.sql`). Files are applied in lexical filename order and each file plus its tracking row commits in one transaction. `001_hope_base_structure.sql` creates the ten HOPE base tables, and `002_hope_sample_data.sql` loads the guide's screen fixtures.
+Add forward-only PostgreSQL migrations here as `NNN_description.sql` (for example, `001_create_users.sql`). Files are applied in lexical filename order and each file plus its tracking row commits in one transaction. Migrations `001` and `002` create and seed the HOPE base tables, `003` creates the role/rights catalogue, `004` links profiles to Supabase Auth, `005` gates effective rights on application approval, and `006` protects user-management tables from direct API-role writes.
 
 Never change or remove an applied migration. Add a new numbered migration instead. Do not put `BEGIN` or `COMMIT` inside migration files; the runner owns the transaction. Audit logging objects are excluded here and reserved for Task 6.
+
+`004_supabase_auth_profiles.sql` requires `public.app_user` and any existing `public.profiles` table to be empty before it adds the required Auth UUID FK and removes legacy password columns. It aborts before changing the schema when either table contains rows. Reconcile existing profiles with Supabase Auth through a separately reviewed backfill plan; never copy password hashes into `auth.users` or bypass the guard. Registration APIs should write to `app_user` by `auth_user_id`; delete an unlinked Auth account if its profile insert fails.
+
+`006_lock_down_user_management_api_access.sql` enables RLS on `app_user` and `user_permission`, revokes their direct privileges from `PUBLIC`, `anon`, and `authenticated`, and grants the server-only `service_role` the needed table/sequence access. Do not expose the service-role secret to clients.

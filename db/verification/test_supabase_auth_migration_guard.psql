@@ -1,0 +1,109 @@
+\set ON_ERROR_STOP on
+BEGIN;
+
+DROP VIEW IF EXISTS public.v_user_effective_rights, public.v_rights_count_by_module CASCADE;
+DROP TABLE IF EXISTS
+    public.user_permission,
+    public.app_user,
+    public.profiles,
+    public.rights,
+    public.module,
+    public.role,
+    public."PAYMENT",
+    public."SALESDETAIL",
+    public."SALES",
+    public."PRICEHIST",
+    public."PRODUCT",
+    public."CUSTOMER",
+    public."JOBHISTORY",
+    public."JOB",
+    public."DEPARTMENT",
+    public."EMPLOYEE"
+CASCADE;
+
+\i db/migrations/001_hope_base_structure.sql
+\i db/migrations/002_hope_sample_data.sql
+\i db/migrations/003_user_management.sql
+
+INSERT INTO public.app_user (
+    first_name, last_name, email, password_hash, must_set_password
+)
+VALUES (
+    'Legacy', 'Fixture', 'legacy.fixture@example.invalid',
+    'fixture-only-not-a-real-password-hash', FALSE
+);
+
+SAVEPOINT before_auth_profile_migration;
+\set ON_ERROR_STOP off
+\i db/migrations/004_supabase_auth_profiles.sql
+\set auth_migration_failed :ERROR
+\set ON_ERROR_STOP on
+ROLLBACK TO SAVEPOINT before_auth_profile_migration;
+
+\if :auth_migration_failed
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM public.app_user
+        WHERE email = 'legacy.fixture@example.invalid'
+          AND password_hash = 'fixture-only-not-a-real-password-hash'
+          AND must_set_password = FALSE
+    ) THEN
+        RAISE EXCEPTION 'Migration guard failed to preserve the existing profile and legacy password value';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'app_user'
+          AND column_name IN ('auth_user_id', 'approval_status')
+    ) THEN
+        RAISE EXCEPTION 'Migration guard altered the schema before refusing the non-empty table';
+    END IF;
+    RAISE NOTICE 'PASS: migration 004 refused a non-empty app_user and preserved its row and password data';
+END;
+$$;
+\else
+\echo 'FAIL: migration 004 accepted a non-empty app_user table'
+\quit 1
+\endif
+
+DELETE FROM public.app_user WHERE email = 'legacy.fixture@example.invalid';
+CREATE TABLE public.profiles (id UUID PRIMARY KEY);
+INSERT INTO public.profiles (id)
+VALUES ('00000000-0000-4000-8000-000000000004');
+
+SAVEPOINT before_legacy_profiles_migration;
+\set ON_ERROR_STOP off
+\i db/migrations/004_supabase_auth_profiles.sql
+\set profiles_migration_failed :ERROR
+\set ON_ERROR_STOP on
+ROLLBACK TO SAVEPOINT before_legacy_profiles_migration;
+
+\if :profiles_migration_failed
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM public.app_user) THEN
+        RAISE EXCEPTION 'Migration guard changed app_user while refusing legacy profiles';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = '00000000-0000-4000-8000-000000000004'
+    ) THEN
+        RAISE EXCEPTION 'Migration guard failed to preserve the legacy profile';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'app_user'
+          AND column_name IN ('auth_user_id', 'approval_status')
+    ) THEN
+        RAISE EXCEPTION 'Migration guard altered app_user before refusing legacy profiles';
+    END IF;
+    RAISE NOTICE 'PASS: migration 004 refused populated legacy profiles and preserved their row';
+END;
+$$;
+\else
+\echo 'FAIL: migration 004 accepted populated legacy profiles'
+\quit 1
+\endif
+
+ROLLBACK;
