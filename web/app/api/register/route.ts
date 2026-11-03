@@ -1,6 +1,40 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  getRecoveryCookieName,
+  RECOVERY_MARKER_KEY,
+  REGISTRATION_RECOVERY_TTL_SECONDS,
+  registerEmail,
+} from "@/lib/email-registration.mjs";
+
+type RecoveryCapability = {
+  authUserId: string;
+  token: string;
+};
+
+function decodeRecoveryCapability(value: string): RecoveryCapability | null {
+  try {
+    const parsed: unknown = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf8")
+    );
+
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "authUserId" in parsed &&
+      "token" in parsed &&
+      typeof parsed.authUserId === "string" &&
+      typeof parsed.token === "string"
+    ) {
+      return { authUserId: parsed.authUserId, token: parsed.token };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -87,90 +121,107 @@ export async function POST(request: Request) {
     },
   });
 
-  const { data: inviteData, error: inviteError } =
-    await supabase.auth.admin.inviteUserByEmail(email, {
-      data: {
-        first_name: firstName,
-        last_name: lastName,
-      },
-    });
-
-  if (inviteError || !inviteData.user) {
-    console.error(
-      "Registration invitation failed:",
-      inviteError?.message
-    );
-
-    const errorMessage = inviteError?.message.toLowerCase() ?? "";
-
-    if (
-      errorMessage.includes("rate limit") ||
-      errorMessage.includes("too many requests")
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Too many registration emails were requested. Please wait before trying again, or ask the administrator to configure custom SMTP in Supabase.",
-        },
-        { status: 429 }
-      );
+  const recoveryCookieName = getRecoveryCookieName(email);
+  const rawCookieValue = request.headers
+    .get("cookie")
+    ?.split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(`${recoveryCookieName}=`))
+    ?.slice(recoveryCookieName.length + 1);
+  let recovery: RecoveryCapability | null = null;
+  if (rawCookieValue !== undefined) {
+    try {
+      recovery = decodeRecoveryCapability(decodeURIComponent(rawCookieValue)) ?? {
+        authUserId: "",
+        token: "",
+      };
+    } catch {
+      recovery = { authUserId: "", token: "" };
     }
-
-    if (errorMessage.includes("already been registered")) {
-      return NextResponse.json(
-        {
-          error:
-            "This email already has an account. Try Continue with Google or contact the administrator for help.",
-        },
-        { status: 409 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error:
-          "Unable to send the registration email. Check the email address and Supabase invitation settings.",
-      },
-      { status: 400 }
-    );
   }
 
-  const authUserId = inviteData.user.id;
-
-  const { error: profileError } = await supabase
-    .from("app_user")
-    .upsert({
-      auth_user_id: authUserId,
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      approval_status: "Pending",
-    }, {
-      onConflict: "auth_user_id",
-      ignoreDuplicates: true,
-    });
-
-  if (profileError) {
-    console.error("Registration app_user profile creation failed:", {
-      code: profileError.code,
-      message: profileError.message,
-      hint: profileError.hint,
-    });
-
-    return NextResponse.json(
-      {
-        error:
-          "The invitation was created, but the account profile could not be saved. Contact the administrator before trying again.",
-      },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json(
+  const result = await registerEmail(
+    { email, firstName, lastName, recovery },
     {
-      message:
-        "Registration submitted. Check your email for the invitation. Your account is pending approval.",
-    },
-    { status: 201 }
+      invite: async (targetEmail, metadata) => {
+        const { data, error } =
+          await supabase.auth.admin.inviteUserByEmail(targetEmail, {
+            data: metadata,
+          });
+        return { user: data.user, error };
+      },
+      getAuthUserById: async (id) => {
+        const { data, error } = await supabase.auth.admin.getUserById(id);
+        return { user: data.user, error };
+      },
+      setRecoveryMarker: async (id, marker) => {
+        const { data: current, error: lookupError } =
+          await supabase.auth.admin.getUserById(id);
+
+        if (lookupError || !current.user) {
+          return {
+            error:
+              lookupError ??
+              new Error("Newly invited Auth user could not be retrieved."),
+          };
+        }
+
+        const { error } = await supabase.auth.admin.updateUserById(id, {
+          app_metadata: {
+            ...current.user.app_metadata,
+            [RECOVERY_MARKER_KEY]: marker,
+          },
+        });
+        return { error };
+      },
+      findProfileByAuthUserId: async (id) => {
+        const { data, error } = await supabase
+          .from("app_user")
+          .select("auth_user_id, approval_status")
+          .eq("auth_user_id", id)
+          .maybeSingle();
+        return { profile: data, error };
+      },
+      insertProfile: async (profile) => {
+        const { data, error } = await supabase
+          .from("app_user")
+          .insert(profile)
+          .select("auth_user_id, approval_status")
+          .single();
+        return { profile: data, error };
+      },
+      deleteAuthUser: async (id) => {
+        const { error } = await supabase.auth.admin.deleteUser(id);
+        return { error };
+      },
+      logError: (event, details) => {
+        console.error(event, details);
+      },
+    }
   );
+
+  const response = NextResponse.json(result.body, { status: result.status });
+  if ("recovery" in result && result.recovery) {
+    response.cookies.set(
+      recoveryCookieName,
+      Buffer.from(JSON.stringify(result.recovery)).toString("base64url"),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/api/register",
+        maxAge: REGISTRATION_RECOVERY_TTL_SECONDS,
+      }
+    );
+  } else if ("clearRecovery" in result && result.clearRecovery) {
+    response.cookies.set(recoveryCookieName, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/api/register",
+      maxAge: 0,
+    });
+  }
+
+  return response;
 }
