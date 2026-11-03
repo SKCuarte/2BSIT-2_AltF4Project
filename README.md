@@ -20,6 +20,14 @@ Welcome to the **Hope, Inc. ERP** project repository! This repository houses the
    
 ---
 
+## Web Registration Setup
+
+The registration API stores account profiles in Supabase's `public.app_user` table. Use the database team's current migrations for the project schema; do not apply ad-hoc schema changes from this application repository. Configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and the server-only `SUPABASE_SERVICE_ROLE_KEY` in `web/.env.local`. Never use the service-role key in client-side code or expose it through a `NEXT_PUBLIC_` variable.
+
+For Google registration, enable the Google provider in Supabase Authentication settings and configure its OAuth credentials. Add the app callback URL (for example, `http://localhost:3000/auth/callback?intent=register`) to Supabase's allowed redirect URLs. In Google Cloud, set the Supabase OAuth callback (`https://<project-ref>.supabase.co/auth/v1/callback`) as an authorized redirect URI.
+
+---
+
 ## 👥 Team Roles & Responsibilities
 
 | Role | Lead / Assignees | Key Scope |

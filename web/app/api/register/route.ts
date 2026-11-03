@@ -68,9 +68,10 @@ export async function POST(request: Request) {
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl || !secretKey) {
+  if (!supabaseUrl || !serviceRoleKey) {
     console.error("Supabase server configuration is missing.");
 
     return NextResponse.json(
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = createClient(supabaseUrl, secretKey, {
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -100,10 +101,35 @@ export async function POST(request: Request) {
       inviteError?.message
     );
 
+    const errorMessage = inviteError?.message.toLowerCase() ?? "";
+
+    if (
+      errorMessage.includes("rate limit") ||
+      errorMessage.includes("too many requests")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Too many registration emails were requested. Please wait before trying again, or ask the administrator to configure custom SMTP in Supabase.",
+        },
+        { status: 429 }
+      );
+    }
+
+    if (errorMessage.includes("already been registered")) {
+      return NextResponse.json(
+        {
+          error:
+            "This email already has an account. Try Continue with Google or contact the administrator for help.",
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       {
         error:
-          "Unable to register this email. Check the email or invitation settings.",
+          "Unable to send the registration email. Check the email address and Supabase invitation settings.",
       },
       { status: 400 }
     );
@@ -125,23 +151,17 @@ export async function POST(request: Request) {
     });
 
   if (profileError) {
-    console.error(
-      "Profile creation failed:",
-      profileError.message
-    );
-
-    const { error: cleanupError } =
-      await supabase.auth.admin.deleteUser(authUserId);
-
-    if (cleanupError) {
-      console.error(
-        "Auth user cleanup failed:",
-        cleanupError.message
-      );
-    }
+    console.error("Registration app_user profile creation failed:", {
+      code: profileError.code,
+      message: profileError.message,
+      hint: profileError.hint,
+    });
 
     return NextResponse.json(
-      { error: "Unable to save the registration profile." },
+      {
+        error:
+          "The invitation was created, but the account profile could not be saved. Contact the administrator before trying again.",
+      },
       { status: 500 }
     );
   }

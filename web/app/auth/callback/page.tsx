@@ -48,8 +48,12 @@ export default function AuthCallbackPage() {
         const response = await fetch("/api/register/google", {
           method: "POST",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${data.session.access_token}`,
           },
+          body: JSON.stringify({
+            intent: params.get("intent") === "register" ? "register" : "sign_in",
+          }),
         });
         const result = await response.json().catch(() => null);
 
@@ -61,17 +65,27 @@ export default function AuthCallbackPage() {
 
         return {
           status: "success",
-          message: result?.created
-            ? "Google registration submitted. Your account is pending approval."
-            : "Your Google account is connected. Existing profile details were not changed.",
+          message:
+            result?.approvalStatus === "Pending"
+              ? result.created
+                ? "Google registration submitted. Your account is pending approval."
+                : "Your account is pending approval."
+              : result?.approvalStatus === "Rejected"
+                ? "Your account was not approved. Contact the administrator for help."
+                : result?.created
+                  ? "Google registration is complete. Your account is approved."
+                  : "Google sign-in is complete.",
         };
       } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "";
+
         return {
           status: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Google registration could not be completed.",
+          message: errorMessage.toLowerCase().includes("code verifier")
+            ? "Google sign-in could not be verified. Start again from the same browser where you opened registration; do not switch between the VS Code preview and Edge/Chrome or clear browser data during sign-in."
+            : errorMessage ||
+              "Google registration could not be completed.",
         };
       }
     }

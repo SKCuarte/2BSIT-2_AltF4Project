@@ -22,18 +22,47 @@ function getNameParts(user: {
 }
 
 export async function POST(request: Request) {
+  let requestBody: unknown;
+
+  try {
+    requestBody = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid Google registration request." },
+      { status: 400 }
+    );
+  }
+
+  if (
+    typeof requestBody !== "object" ||
+    requestBody === null ||
+    Array.isArray(requestBody) ||
+    !("intent" in requestBody) ||
+    (requestBody.intent !== "register" && requestBody.intent !== "sign_in")
+  ) {
+    return NextResponse.json(
+      { error: "A valid Google authentication intent is required." },
+      { status: 400 }
+    );
+  }
+
+  const intent = requestBody.intent;
   const authorization = request.headers.get("authorization");
   const accessToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
 
   if (!accessToken) {
-    return NextResponse.json({ error: "Authentication is required." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Authentication is required." },
+      { status: 401 }
+    );
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl || !anonKey || !secretKey) {
+  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     console.error("Supabase server configuration is missing.");
     return NextResponse.json(
       { error: "Server configuration is incomplete." },
@@ -54,17 +83,21 @@ export async function POST(request: Request) {
     );
   }
 
-  const adminClient = createClient(supabaseUrl, secretKey, {
+  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: existingProfile, error: lookupError } = await adminClient
     .from("app_user")
-    .select("id, approval_status, is_blocked")
+    .select("approval_status")
     .eq("auth_user_id", authData.user.id)
     .maybeSingle();
 
   if (lookupError) {
-    console.error("Profile lookup failed:", lookupError.message);
+    console.error("Google app_user profile lookup failed:", {
+      code: lookupError.code,
+      message: lookupError.message,
+      hint: lookupError.hint,
+    });
     return NextResponse.json(
       { error: "Unable to check the registration profile." },
       { status: 500 }
@@ -76,9 +109,18 @@ export async function POST(request: Request) {
       {
         created: false,
         approvalStatus: existingProfile.approval_status,
-        blocked: existingProfile.is_blocked,
       },
       { status: 200 }
+    );
+  }
+
+  if (intent !== "register") {
+    return NextResponse.json(
+      {
+        error:
+          "No application profile is linked to this Google account. Start registration or contact the administrator.",
+      },
+      { status: 404 }
     );
   }
 
@@ -95,45 +137,66 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error: insertError } = await adminClient.from("app_user").upsert(
-    {
+  const { data: newProfile, error: insertError } = await adminClient
+    .from("app_user")
+    .insert({
       auth_user_id: authData.user.id,
       first_name: firstName,
       last_name: lastName,
       email,
       approval_status: "Pending",
-    },
-    { onConflict: "auth_user_id", ignoreDuplicates: true }
-  );
-
-  if (insertError) {
-    console.error("Google registration app_user creation failed:", insertError.message);
-    const { error: cleanupError } =
-      await adminClient.auth.admin.deleteUser(authData.user.id);
-    if (cleanupError) {
-      console.error("Unlinked Google Auth user cleanup failed:", cleanupError.message);
-    }
-    return NextResponse.json(
-      { error: "Unable to save the Google registration profile. Please retry." },
-      { status: 500 }
-    );
-  }
-
-  const { data: appUser, error: profileError } = await adminClient
-    .from("app_user")
-    .select("approval_status, is_blocked")
-    .eq("auth_user_id", authData.user.id)
+    })
+    .select("approval_status")
     .single();
 
-  if (profileError || !appUser) {
-    console.error("Google registration app_user lookup failed:", profileError?.message);
-    const { error: cleanupError } =
-      await adminClient.auth.admin.deleteUser(authData.user.id);
-    if (cleanupError) {
-      console.error("Unlinked Google Auth user cleanup failed:", cleanupError.message);
+  if (insertError) {
+    console.error("Google app_user profile creation failed:", {
+      code: insertError.code,
+      message: insertError.message,
+      hint: insertError.hint,
+    });
+
+    if (insertError.code === "23505") {
+      const { data: concurrentProfile, error: concurrentLookupError } =
+        await adminClient
+          .from("app_user")
+          .select("approval_status")
+          .eq("auth_user_id", authData.user.id)
+          .maybeSingle();
+
+      if (concurrentLookupError) {
+        console.error("Google app_user conflict lookup failed:", {
+          code: concurrentLookupError.code,
+          message: concurrentLookupError.message,
+          hint: concurrentLookupError.hint,
+        });
+        return NextResponse.json(
+          { error: "Unable to check the registration profile." },
+          { status: 500 }
+        );
+      }
+
+      if (concurrentProfile) {
+        return NextResponse.json(
+          {
+            created: false,
+            approvalStatus: concurrentProfile.approval_status,
+          },
+          { status: 200 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            "This email is already linked to another account. Contact the administrator for help.",
+        },
+        { status: 409 }
+      );
     }
+
     return NextResponse.json(
-      { error: "Registration profile is not ready. Please retry." },
+      { error: "Unable to save the Google registration profile. Please retry." },
       { status: 500 }
     );
   }
@@ -141,8 +204,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       created: true,
-      approvalStatus: appUser.approval_status,
-      blocked: appUser.is_blocked,
+      approvalStatus: newProfile.approval_status,
     },
     { status: 201 }
   );
