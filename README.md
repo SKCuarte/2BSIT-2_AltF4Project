@@ -8,6 +8,7 @@ Welcome to the **Hope, Inc. ERP** project repository! This repository houses the
 
 ### Prerequisites
 - **Git** (latest release)
+- **Node.js** (v18 or higher recommended)
 - **Supabase** (PostgreSQL cloud database platform, configured in `.env`)
 
 ### Local Installation
