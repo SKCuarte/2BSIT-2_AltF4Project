@@ -58,6 +58,7 @@ jobs:
           echo "$status" | grep -Fx 'PENDING 004_supabase_auth_profiles.sql'
           echo "$status" | grep -Fx 'PENDING 005_gate_rights_by_approval.sql'
           echo "$status" | grep -Fx 'PENDING 006_lock_down_user_management_api_access.sql'
+          echo "$status" | grep -Fx 'PENDING 007_password_reset_token.sql'
       - name: Apply migrations
         run: npm run db:migrate
       - name: Confirm applied migration status
@@ -70,7 +71,10 @@ jobs:
           echo "$status" | grep -Fx 'APPLIED 004_supabase_auth_profiles.sql'
           echo "$status" | grep -Fx 'APPLIED 005_gate_rights_by_approval.sql'
           echo "$status" | grep -Fx 'APPLIED 006_lock_down_user_management_api_access.sql'
+          echo "$status" | grep -Fx 'APPLIED 007_password_reset_token.sql'
       - name: Verify HOPE fixtures and constraints
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/hope_verification.sql
       - name: Verify user-management schema and permissions
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql
+      - name: Verify password reset token lifecycle and access
+        run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/password_reset_token_verification.sql
