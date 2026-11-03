@@ -41,6 +41,7 @@ DECLARE
     permission_stamp TEXT;
     denied BOOLEAN;
     effective_count INTEGER;
+    public_role TEXT;
 BEGIN
     IF (SELECT COUNT(*) FROM public.role) <> 3 THEN
         RAISE EXCEPTION 'Expected 3 roles';
@@ -50,6 +51,25 @@ BEGIN
     END IF;
     IF (SELECT COUNT(*) FROM public.rights) <> 36 THEN
         RAISE EXCEPTION 'Expected 36 rights';
+    END IF;
+    IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.app_user'::regclass)
+        OR NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.user_permission'::regclass) THEN
+        RAISE EXCEPTION 'RLS must be enabled for app_user and user_permission';
+    END IF;
+    FOREACH public_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+        IF has_table_privilege(public_role, 'public.app_user', 'INSERT')
+            OR has_table_privilege(public_role, 'public.app_user', 'UPDATE')
+            OR has_table_privilege(public_role, 'public.app_user', 'DELETE')
+            OR has_table_privilege(public_role, 'public.user_permission', 'INSERT')
+            OR has_table_privilege(public_role, 'public.user_permission', 'UPDATE')
+            OR has_table_privilege(public_role, 'public.user_permission', 'DELETE') THEN
+            RAISE EXCEPTION 'Public API role % can modify protected user-management tables', public_role;
+        END IF;
+    END LOOP;
+    IF NOT has_table_privilege('service_role', 'public.app_user', 'INSERT')
+        OR NOT has_table_privilege('service_role', 'public.app_user', 'UPDATE')
+        OR NOT has_sequence_privilege('service_role', pg_get_serial_sequence('public.app_user', 'id'), 'USAGE') THEN
+        RAISE EXCEPTION 'Server service_role must retain app_user write and identity-sequence access';
     END IF;
     IF EXISTS (
         SELECT 1 FROM public.v_rights_count_by_module

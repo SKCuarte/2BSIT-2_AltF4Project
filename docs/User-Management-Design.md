@@ -40,6 +40,7 @@ The registration endpoints create or find `app_user` by `auth_user_id`; they mus
 - A blocked account keeps its permission rows. The server must reject authentication when `is_blocked` is true; the effective-rights view reports the grants independently of block state.
 - Superadmin has every active catalogue right implicitly. Do not insert `user_permission` rows for Superadmin; the view returns `granted = true` for those rights.
 - Only an active, unblocked Admin or Superadmin may change permissions. Before permission writes, the authenticated server must set transaction-local `app.user_id` to the verified actor ID. The trigger checks that actor and rejects physical deletes. The application must still authorize every API request, prevent clients from choosing `app.user_id`, and restrict direct database access; the trigger is an additional guard, not a replacement for server authorization.
+- Migration 006 enables RLS and revokes all direct table privileges on `app_user` and `user_permission` from `PUBLIC`, `anon`, and `authenticated`. Trusted server routes use `service_role`, which bypasses RLS; keep its secret key server-only. No public client role may update profile, approval, blocked, or permission fields directly.
 - Unticking a permission sets its status to Inactive; ticking it again updates the same `(user_id, right_id)` row to Active. The stamp records only the latest operation, so earlier grant/revoke cycles are lost. A separate audit log in Task 6 is required for full history.
 
 ## Queries and Verification
@@ -61,6 +62,6 @@ FROM public.v_rights_count_by_module
 ORDER BY module_code;
 ```
 
-Expected counts: Customer 3, Product 6, Human Resources 13, Sales 7, Reports 7; total 36. CI creates a minimal `auth.users` stub and three UUID fixtures before migration to verify the FK. To run this script against plain local PostgreSQL, create the same stub and fixtures in a disposable database and grant the migration role `USAGE` on schema `auth` plus `REFERENCES` on `auth.users`. Do not create mock Auth identities in a shared or production Supabase project. Then run `psql -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql`; it prints the counts and rolls back its temporary app-user/permission checks. Any failed assertion exits non-zero.
+Expected counts: Customer 3, Product 6, Human Resources 13, Sales 7, Reports 7; total 36. CI creates local `anon`, `authenticated`, and `service_role` stand-ins plus a minimal `auth.users` stub and three UUID fixtures before migration. To reproduce locally, follow the `Local Supabase Auth Stub` section in `db/README.md` using a disposable database. Do not create mock Auth identities in a shared or Production Supabase project. Then run `psql -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql`; it prints the counts and rolls back its temporary app-user/permission checks. Any failed assertion exits non-zero.
 
 The Task 3 migration is forward-only. To roll back during development, recreate the local development database with `npm run db:reset`, then rerun all migrations. Never drop these tables manually in a shared database.
