@@ -26,6 +26,8 @@ The registration API stores account profiles in Supabase's `public.app_user` tab
 
 For Google registration, enable the Google provider in Supabase Authentication settings and configure its OAuth credentials. Add the app callback URL (for example, `http://localhost:3000/auth/callback?intent=register`) to Supabase's allowed redirect URLs. In Google Cloud, set the Supabase OAuth callback (`https://<project-ref>.supabase.co/auth/v1/callback`) as an authorized redirect URI.
 
+Email registration responses are intentionally neutral for successful invitations and invitation failures to avoid disclosing whether an email is already registered. If profile creation fails, the server attempts to clean up only the Auth user returned by that invitation request. When cleanup fails after a recovery marker was saved, the registrant can retry using the short-lived, browser-held recovery capability after verifying the invitation email. If saving the recovery marker and deleting that newly invited Auth user both fail, no self-service recovery capability exists; the API returns an administrator-assistance message and logs sanitized diagnostics including the Auth user ID and failure codes. An administrator must inspect `auth.users` and `public.app_user` and reconcile or remove only the confirmed incomplete registration. Do not recover accounts by matching email alone.
+
 ---
 
 ## 👥 Team Roles & Responsibilities

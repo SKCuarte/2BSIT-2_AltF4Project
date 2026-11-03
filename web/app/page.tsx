@@ -49,7 +49,8 @@ export default function Home() {
       setEmail("");
       setIsSuccess(true);
       setMessage(
-        "Registration submitted. Your account is pending approval."
+        result?.message ??
+          "If registration can be completed, an invitation email will be sent. If you already have an account or do not receive an email, contact the administrator."
       );
     } catch {
       setMessage(

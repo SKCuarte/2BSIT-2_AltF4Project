@@ -28,6 +28,14 @@ function createHarness(options = {}) {
       if (options.invitationError) {
         return { error: options.invitationError };
       }
+      if (state.authUser) {
+        return {
+          error: {
+            code: "user_already_exists",
+            message: "User already registered",
+          },
+        };
+      }
 
       state.authUser = {
         id: authUserId,
@@ -44,6 +52,15 @@ function createHarness(options = {}) {
     setRecoveryMarker: async (id, marker) => {
       if (state.authUser?.id !== id) {
         return { error: new Error("Auth user not found") };
+      }
+      if (options.markerWriteFails) {
+        return {
+          error: {
+            code: "marker_write_failed",
+            message:
+              "failed to save marker for applicant@example.com token=marker-secret",
+          },
+        };
       }
       state.authUser.app_metadata[RECOVERY_MARKER_KEY] = marker;
       return {};
@@ -99,7 +116,7 @@ test("cleans up the Auth user created by the failed invitation request", async (
 
   const result = await registerEmail(registration, dependencies);
 
-  assert.equal(result.status, 500);
+  assert.equal(result.status, 202);
   assert.deepEqual(state.deleteCalls, [authUserId]);
   assert.equal(state.authUser, null);
   assert.equal(result.recovery, undefined);
@@ -112,6 +129,48 @@ test("cleans up the Auth user created by the failed invitation request", async (
         details.hint === profileError.hint
     )
   );
+});
+
+test("requires administrator recovery when marker persistence and Auth cleanup both fail", async () => {
+  const { dependencies, state } = createHarness({
+    profileWriteFails: true,
+    markerWriteFails: true,
+    cleanupFails: true,
+  });
+
+  const failedRegistration = await registerEmail(registration, dependencies);
+
+  assert.equal(failedRegistration.status, 500);
+  assert.match(failedRegistration.body.error, /contact the administrator/i);
+  assert.equal(failedRegistration.recovery, undefined);
+  assert.equal(state.authUser.id, authUserId);
+  assert.equal(state.authUser.app_metadata[RECOVERY_MARKER_KEY], undefined);
+  assert.deepEqual(state.deleteCalls, [authUserId]);
+  assert.ok(
+    state.logs.some(
+      ({ event, details }) =>
+        event === "Registration recovery marker creation failed" &&
+        details.authUserId === authUserId &&
+        details.code === "marker_write_failed"
+    )
+  );
+  assert.ok(
+    state.logs.some(
+      ({ event, details }) =>
+        event === "Registration Auth user cleanup failed" &&
+        details.authUserId === authUserId &&
+        details.code === "XX001"
+    )
+  );
+  assert.equal(JSON.stringify(state.logs).includes("marker-secret"), false);
+  assert.equal(JSON.stringify(state.logs).includes(registration.email), false);
+
+  const retry = await registerEmail(registration, dependencies);
+
+  assert.equal(retry.status, 202);
+  assert.equal(retry.body.error, undefined);
+  assert.deepEqual(state.deleteCalls, [authUserId]);
+  assert.equal(state.profile, null);
 });
 
 test("issues a recovery capability only when cleanup fails", async () => {
@@ -141,6 +200,50 @@ test("issues a recovery capability only when cleanup fails", async () => {
   assert.equal(JSON.stringify(state.logs).includes("a".repeat(43)), false);
 });
 
+test("duplicate email responses match successful and other failed invitation outcomes", async () => {
+  const duplicateHarness = createHarness({
+    invitationError: {
+      code: "user_already_exists",
+      message: "User already registered",
+    },
+  });
+  const providerFailureHarness = createHarness({
+    invitationError: {
+      code: "unexpected_provider_error",
+      message: "Invitation provider is unavailable",
+    },
+  });
+  const thrownFailureHarness = createHarness();
+  thrownFailureHarness.dependencies.invite = async () => {
+    throw new Error("Invitation provider is unavailable");
+  };
+  const successfulHarness = createHarness();
+
+  const duplicateResult = await registerEmail(
+    registration,
+    duplicateHarness.dependencies
+  );
+  const providerFailureResult = await registerEmail(
+    registration,
+    providerFailureHarness.dependencies
+  );
+  const thrownFailureResult = await registerEmail(
+    registration,
+    thrownFailureHarness.dependencies
+  );
+  const successfulResult = await registerEmail(
+    registration,
+    successfulHarness.dependencies
+  );
+
+  assert.deepEqual(duplicateResult, providerFailureResult);
+  assert.deepEqual(duplicateResult, thrownFailureResult);
+  assert.deepEqual(duplicateResult, successfulResult);
+  assert.equal(duplicateResult.status, 202);
+  assert.equal(JSON.stringify(duplicateResult).includes(registration.email), false);
+  assert.equal(JSON.stringify(duplicateResult).toLowerCase().includes("already registered"), false);
+});
+
 test("reconciles an incomplete registration only after verified email and matching marker", async () => {
   const { dependencies, state } = createHarness({
     profileWriteFails: true,
@@ -163,6 +266,40 @@ test("reconciles an incomplete registration only after verified email and matchi
   assert.equal(state.profile.auth_user_id, authUserId);
   assert.equal(state.profile.approval_status, "Pending");
   assert.equal("role_id" in state.profile, false);
+});
+
+test("recovery leaves an existing Approved profile unchanged and never deletes its Auth account", async () => {
+  const { dependencies, state } = createHarness({
+    profileWriteFails: true,
+    cleanupFails: true,
+  });
+  const failedRegistration = await registerEmail(registration, dependencies);
+  state.authUser.email_confirmed_at = new Date(fixedNow).toISOString();
+  state.profile = {
+    id: 371,
+    auth_user_id: authUserId,
+    first_name: "Existing",
+    last_name: "Approved User",
+    email: registration.email,
+    role_id: 7,
+    is_blocked: false,
+    approval_status: "Approved",
+    created_at: "2026-10-12T10:11:12.000Z",
+  };
+  const approvedProfileBeforeRecovery = structuredClone(state.profile);
+  const deleteCallsBeforeRecovery = [...state.deleteCalls];
+
+  const result = await registerEmail(
+    { ...registration, recovery: failedRegistration.recovery },
+    dependencies
+  );
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.approvalStatus, "Approved");
+  assert.deepEqual(state.profile, approvedProfileBeforeRecovery);
+  assert.deepEqual(state.deleteCalls, deleteCallsBeforeRecovery);
+  assert.equal(state.authUser.id, authUserId);
+  assert.equal(state.insertCalls.length, 1);
 });
 
 test("rejects recovery for an unverified existing Auth account", async () => {
@@ -218,7 +355,8 @@ test("invitation failure does not insert a profile or delete an Auth user", asyn
 
   const result = await registerEmail(registration, dependencies);
 
-  assert.equal(result.status, 409);
+  assert.equal(result.status, 202);
+  assert.equal(result.body.error, undefined);
   assert.equal(state.insertCalls.length, 0);
   assert.equal(state.deleteCalls.length, 0);
   assert.equal(state.authUser, null);

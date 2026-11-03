@@ -8,6 +8,26 @@ export const REGISTRATION_RECOVERY_TTL_SECONDS = 30 * 60;
 
 export const RECOVERY_MARKER_KEY = "hope_email_registration_recovery";
 
+const NEUTRAL_REGISTRATION_MESSAGE =
+  "If registration can be completed, an invitation email will be sent. If you already have an account or do not receive an email, contact the administrator.";
+
+function neutralRegistrationResponse() {
+  return {
+    status: 202,
+    body: { message: NEUTRAL_REGISTRATION_MESSAGE },
+  };
+}
+
+function administratorRecoveryResponse() {
+  return {
+    status: 500,
+    body: {
+      error:
+        "Registration could not be completed automatically. Please contact the administrator for assistance.",
+    },
+  };
+}
+
 /**
  * @param {string} email
  */
@@ -44,18 +64,45 @@ function errorDetails(error) {
     );
 
     return {
-      code: typeof value.code === "string" ? value.code : undefined,
+      code:
+        typeof value.code === "string"
+          ? sanitizeLogText(value.code)
+          : undefined,
       message:
         typeof value.message === "string"
-          ? value.message
+          ? sanitizeLogText(value.message)
           : "Unknown Supabase error",
-      hint: typeof value.hint === "string" ? value.hint : undefined,
+      hint:
+        typeof value.hint === "string"
+          ? sanitizeLogText(value.hint)
+          : undefined,
     };
   }
 
   return {
-    message: error instanceof Error ? error.message : "Unknown error",
+    message:
+      error instanceof Error
+        ? sanitizeLogText(error.message)
+        : "Unknown error",
   };
+}
+
+/**
+ * @param {string} value
+ */
+function sanitizeLogText(value) {
+  return value
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted-email]")
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, "Bearer [REDACTED]")
+    .replace(
+      /\b(?:eyJ[A-Za-z0-9_-]{10,}\.)[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
+      "[REDACTED-TOKEN]"
+    )
+    .replace(
+      /\b(service[_ -]?role[_ -]?key|access[_ -]?token|refresh[_ -]?token|api[_ -]?key|token|password|secret|authorization)\b\s*[:=]\s*(['"]?)[^\s,;]+/gi,
+      (_match, key) => `${key}=[REDACTED]`
+    )
+    .slice(0, 500);
 }
 
 /**
@@ -122,47 +169,13 @@ export async function registerEmail(input, dependencies) {
     });
   } catch (error) {
     logError(dependencies, "Registration invitation failed", errorDetails(error));
-    return {
-      status: 502,
-      body: { error: "Unable to send the registration email. Please try again later." },
-    };
+    return neutralRegistrationResponse();
   }
 
   if (inviteResult.error || !inviteResult.user) {
     const details = errorDetails(inviteResult.error);
     logError(dependencies, "Registration invitation failed", details);
-    const message = details.message.toLowerCase();
-
-    if (message.includes("rate limit") || message.includes("too many requests")) {
-      return {
-        status: 429,
-        body: {
-          error:
-            "Too many registration emails were requested. Please wait before trying again, or ask the administrator to configure custom SMTP in Supabase.",
-        },
-      };
-    }
-
-    if (
-      message.includes("already been registered") ||
-      message.includes("already registered")
-    ) {
-      return {
-        status: 409,
-        body: {
-          error:
-            "This email already has an account. Sign in or contact the administrator for help.",
-        },
-      };
-    }
-
-    return {
-      status: 400,
-      body: {
-        error:
-          "Unable to send the registration email. Check the email address and invitation settings.",
-      },
-    };
+    return neutralRegistrationResponse();
   }
 
   const invitedUser = inviteResult.user;
@@ -178,13 +191,7 @@ export async function registerEmail(input, dependencies) {
       hasUserId: Boolean(authUserId),
       emailMatched: invitedEmail === email,
     });
-    return {
-      status: 502,
-      body: {
-        error:
-          "The invitation could not be safely linked to a registration profile. Contact the administrator.",
-      },
-    };
+    return neutralRegistrationResponse();
   }
 
   const profileResult = await insertProfile(
@@ -196,14 +203,7 @@ export async function registerEmail(input, dependencies) {
   );
 
   if (profileResult.profile) {
-    return {
-      status: profileResult.duplicate ? 200 : 201,
-      body: {
-        message:
-          "Registration submitted. Check your email for the invitation. Your account is pending approval.",
-        approvalStatus: profileResult.profile.approval_status ?? "Pending",
-      },
-    };
+    return neutralRegistrationResponse();
   }
 
   logError(
@@ -217,14 +217,9 @@ export async function registerEmail(input, dependencies) {
       authUserId,
       dependencies
     );
-    return {
-      status: 409,
-      body: {
-        error: cleanupResult
-          ? "This email is already linked to an application profile. Contact the administrator for help."
-          : "This email is already linked to an application profile, and the invitation account could not be removed. Contact the administrator.",
-      },
-    };
+    return cleanupResult
+      ? neutralRegistrationResponse()
+      : administratorRecoveryResponse();
   }
 
   const recoveryToken = createToken();
@@ -255,14 +250,14 @@ export async function registerEmail(input, dependencies) {
       "Registration recovery marker creation failed",
       { authUserId, ...errorDetails(markerResult.error) }
     );
-    await cleanupCreatedAuthUser(authUserId, dependencies);
-    return {
-      status: 500,
-      body: {
-        error:
-          "The invitation was created, but the profile could not be saved. Contact the administrator before retrying.",
-      },
-    };
+    const cleanupSucceeded = await cleanupCreatedAuthUser(
+      authUserId,
+      dependencies
+    );
+
+    return cleanupSucceeded
+      ? neutralRegistrationResponse()
+      : administratorRecoveryResponse();
   }
 
   const cleanupSucceeded = await cleanupCreatedAuthUser(
@@ -271,20 +266,14 @@ export async function registerEmail(input, dependencies) {
   );
 
   if (cleanupSucceeded) {
-    return {
-      status: 500,
-      body: {
-        error:
-          "The profile could not be saved and the temporary Auth account was removed. Please start registration again; the previous invitation will no longer work.",
-      },
-    };
+    return neutralRegistrationResponse();
   }
 
   return {
     status: 500,
     body: {
       error:
-        "The profile could not be saved, but the invitation account was preserved. Verify the invitation email, then retry from this browser within 30 minutes.",
+        "Registration could not be completed automatically. If you received an invitation, verify it and retry from the same browser. If recovery still fails, contact the administrator.",
     },
     recovery: { authUserId, token: recoveryToken },
   };
