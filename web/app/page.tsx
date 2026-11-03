@@ -12,13 +12,13 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [isNeutralMessage, setIsNeutralMessage] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setMessage("");
-    setIsSuccess(false);
+    setIsNeutralMessage(false);
     setIsSubmitting(true);
 
     try {
@@ -47,10 +47,10 @@ export default function Home() {
       setFirstName("");
       setLastName("");
       setEmail("");
-      setIsSuccess(true);
+      setIsNeutralMessage(true);
       setMessage(
         result?.message ??
-          "If registration can be completed, an invitation email will be sent. If you already have an account or do not receive an email, contact the administrator."
+          "Registration request received. Check your email for an invitation, or contact the administrator if you don't receive one."
       );
     } catch {
       setMessage(
@@ -63,7 +63,7 @@ export default function Home() {
 
   async function handleGoogleSignIn() {
     setMessage("");
-    setIsSuccess(false);
+    setIsNeutralMessage(false);
     setIsGoogleSubmitting(true);
 
     try {
@@ -194,7 +194,7 @@ export default function Home() {
           </p>
 
           <p
-            className={`msg${isSuccess ? " ok" : ""}`}
+            className={`msg${isNeutralMessage ? " neutral" : ""}`}
             role="status"
             aria-live="polite"
           >

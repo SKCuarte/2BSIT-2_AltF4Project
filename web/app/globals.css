@@ -274,6 +274,10 @@ a:focus-visible {
   color: #187443;
 }
 
+.msg.neutral {
+  color: var(--muted);
+}
+
 @media (max-width: 480px) {
   .registration-page {
     padding: 20px 16px;

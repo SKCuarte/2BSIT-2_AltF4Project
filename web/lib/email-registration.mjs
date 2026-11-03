@@ -9,7 +9,7 @@ export const REGISTRATION_RECOVERY_TTL_SECONDS = 30 * 60;
 export const RECOVERY_MARKER_KEY = "hope_email_registration_recovery";
 
 const NEUTRAL_REGISTRATION_MESSAGE =
-  "If registration can be completed, an invitation email will be sent. If you already have an account or do not receive an email, contact the administrator.";
+  "Registration request received. Check your email for an invitation, or contact the administrator if you don't receive one.";
 
 function neutralRegistrationResponse() {
   return {
