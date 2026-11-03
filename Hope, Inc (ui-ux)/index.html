@@ -68,7 +68,6 @@
       <div class="glance-in">
         <h2>Your business at a glance</h2>
         <p>Customers, products, orders and revenue sit together on one dashboard. Log in to see your latest figures.</p>
-        <button class="pri lg" id="glanceBtn" type="button">Log in to the dashboard</button>
       </div>
     </section>
   </main>
@@ -80,11 +79,10 @@
 <div id="app" class="shell" hidden>
 
   <!--LEFT SIDE BAR: LOGO, MENY AND THE LOGGEDD-IN USER-->
-  <aside class="side">
+  <div class="scrim" id="scrim"></div>
+  <aside class="side" id="side">
     <div class="side-top"><span class="logo"><span class="logo-h">H</span>Hope, Inc. ERP</span></div>
-    <nav class="side-nav" aria-label="Main">
-      <a class="side-link on" href="#" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Dashboard</a>
-    </nav>
+    <nav class="side-nav" id="nav" aria-label="Main"></nav>
     <div class="side-user">
       <span class="avatar" id="avatar" aria-hidden="true"></span>
       <span class="su-text"><strong id="who"></strong><small id="role"></small></span>
@@ -95,17 +93,18 @@
 <!--RIGHT SIDE: TOP BAR AND MAIN CONTENTS-->
   <div class="main">
     <header class="top">
-      <h1 class="top-title">Dashboard</h1>
+      <div class="top-l"><button class="ghost sm tog" id="tog" type="button" aria-label="Show or hide the menu" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><h1 class="top-title" id="vtitle">Dashboard</h1></div>
       <div class="top-r"><span class="badge" id="badge"></span></div>
     </header>
     <div class="wrap">
+      <div class="view" id="v-dashboard">
 <!--WELCOME BANNER-->
       <section class="welcome">
         <h2 id="hello"></h2>
         <p>Here is your business at a glance. Contact an admin if you need elevated permissions.</p>
       </section>
       <section>
-        <p class="muted" id="locked" hidden>Your dashboard access is turned off. Ask an administrator to restore it.</p>
+        <p class="muted" id="locked" hidden>Your access is turned off. Ask an administrator to restore it.</p>
 <!--FOUR FIGURE CARDS-->
         <div id="dash">
           <div class="stats">
@@ -117,8 +116,12 @@
           <p class="muted note">These are sample figures.</p>
         </div>
       </section>
-<!--ADMIN TABLE-->
-      <section id="mgmt"></section>
+      </div>
+<!--MODULE PAGES: each one opens from the sidebar-->
+      <section class="view" id="v-products" hidden></section>
+      <section class="view" id="v-hr" hidden></section>
+      <section class="view" id="v-customers" hidden></section>
+      <section class="view" id="v-users" hidden></section>
     </div>
   </div>
 </div>
@@ -132,38 +135,61 @@
 
     <form id="fLogin">
       <h2 id="t-login">Log in</h2>
-      <p class="sub">Use your Hope, inc. account.</p>
       <label for="le">Email</label><input type="email" id="le" autocomplete="username" required>
       <label for="lp">Password</label><input type="password" id="lp" autocomplete="current-password" required>
       <button class="pri full" type="submit">Log in</button>
-      <p class="alt"><button type="button" class="lnk" data-go="reset">Forgot password?</button><button type="button" class="lnk" data-go="reg">Create an account</button></p>
+      <p class="alt"><button type="button" class="lnk" data-go="forgot">Forgot password?</button><button type="button" class="lnk" data-go="reg">Create an account</button></p>
       <div class="msg" id="lm" role="status"></div>
     </form>
 
     <form id="fReg" hidden>
       <h2>Create account</h2>
-      <p class="sub">New accounts start with the User role.</p>
+      <p class="sub">Submit your details to request access to Hope ERP. An administrator will review your request before your account is activated.</p>
       <label for="rn">Full name</label><input type="text" id="rn" autocomplete="name" required>
       <label for="re">Email</label><input type="email" id="re" autocomplete="email" required>
-      <label for="rp">Password</label><input type="password" id="rp" minlength="6" autocomplete="new-password" required>
-      <label for="rc">Confirm password</label><input type="password" id="rc" minlength="6" autocomplete="new-password" required>
-      <button class="pri full" type="submit">Create account</button>
+      <label for="rp">Password</label><input type="password" id="rp" minlength="8" autocomplete="new-password" required>
+      <label for="rc">Confirm password</label><input type="password" id="rc" minlength="8" autocomplete="new-password" required>
+      <button class="pri full" type="submit">Submit account request</button>
       <p class="alt"><button type="button" class="lnk" data-go="login">Back to log in</button></p>
       <div class="msg" id="rm" role="status"></div>
     </form>
 
+    <form id="fForgot" hidden>
+      <h2>Forgot password?</h2>
+      <p class="sub">Enter the email address associated with your account. If an account matches, recovery instructions will be sent. For this prototype, you can continue to preview the reset-password screen.</p>
+      <label for="fe">Work email</label><input type="email" id="fe" autocomplete="email" required>
+      <button class="pri full" type="submit">Request recovery link</button>
+      <p class="alt"><button type="button" class="lnk" data-go="login">Back to log in</button></p>
+      <div class="msg" id="fm" role="status"></div>
+      <button type="button" class="lnk" id="previewReset">Preview reset-password screen</button>
+    </form>
+
+    <form id="fSetPassword" hidden>
+      <h2>Set your password</h2>
+      <p class="sub">Your account has been approved. Create a password to finish setting up your Hope ERP access.</p>
+      <label for="se">Work email</label><input type="email" id="se" autocomplete="username" required>
+      <label for="sp">New password</label><input type="password" id="sp" minlength="8" autocomplete="new-password" required>
+      <label for="sc">Confirm password</label><input type="password" id="sc" minlength="8" autocomplete="new-password" required>
+      <button class="pri full" type="submit">Set password</button>
+      <p class="alt"><button type="button" class="lnk" data-go="login">Back to log in</button></p>
+      <div class="msg" id="sm" role="status"></div>
+    </form>
+
     <form id="fReset" hidden>
       <h2>Reset password</h2>
-      <p class="sub">Enter your email and choose a new password.</p>
+      <p class="sub">Enter the email address for your account and choose a new password. In a production system, this step would be available only through a valid, time-limited recovery link.</p>
       <label for="pe">Email</label><input type="email" id="pe" autocomplete="username" required>
-      <label for="pp">New password</label><input type="password" id="pp" minlength="6" autocomplete="new-password" required>
-      <label for="pc">Confirm new password</label><input type="password" id="pc" minlength="6" autocomplete="new-password" required>
+      <label for="pp">New password</label><input type="password" id="pp" minlength="8" autocomplete="new-password" required>
+      <label for="pc">Confirm new password</label><input type="password" id="pc" minlength="8" autocomplete="new-password" required>
       <button class="pri full" type="submit">Save new password</button>
       <p class="alt"><button type="button" class="lnk" data-go="login">Back to log in</button></p>
       <div class="msg" id="pm" role="status"></div>
     </form>
   </div>
 </div>
+
+<!--Pop-up for the user form, rights and confirmations-->
+<div class="overlay" id="md" hidden><div class="dialog" id="mdb" role="dialog" aria-modal="true"></div></div>
 
 <script src="script.js"></script>
 </body>
