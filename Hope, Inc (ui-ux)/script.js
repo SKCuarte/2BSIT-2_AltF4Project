@@ -1,40 +1,45 @@
-// Hope, Inc. ERP - simple prototype script
+// Hope, Inc. ERP 
+const R = (...a) => a.map(x => x.split(":"));
+const MODS = {
+  products: { title: "Product Management", blurb: "Catalog, inventory and pricing",
+    rights: R("view:View", "create:Create", "edit:Edit", "delete:Delete", "import:Import", "export:Export", "stock:Adjust stock", "price:Set prices"),
+    cols: [["sku", "SKU"], ["name", "Product"], ["price", "Price", "number"], ["stock", "Stock", "number"]],
+    seed: [["HP-1001", "Standing Desk", "249.00", "38"], ["HP-1002", "Ergonomic Chair", "189.00", "52"], ["HP-1003", "Desk Lamp", "34.50", "120"], ["HP-1004", "Notebook Pack", "12.00", "300"]] },
+  hr: { title: "Human Resource Management", blurb: "Employees, leave and payroll",
+    rights: R("view:View", "create:Create", "edit:Edit", "delete:Delete", "leave:Approve leave", "payroll:Run payroll", "salary:View salaries", "export:Export"),
+    cols: [["name", "Employee"], ["role", "Position"], ["dept", "Department"], ["status", "Status", ["Active", "On leave"]]],
+    seed: [["Alex Rivera", "Sales Associate", "Sales", "Active"], ["Grace Lim", "HR Officer", "People", "Active"], ["Marco Reyes", "Warehouse Lead", "Operations", "On leave"]] },
+  customers: { title: "Customer Management", blurb: "Profiles, leads and history",
+    rights: R("view:View", "create:Create", "edit:Edit", "delete:Delete", "import:Import", "export:Export", "merge:Merge duplicates", "history:View history"),
+    cols: [["name", "Name"], ["email", "Email", "email"], ["phone", "Phone"], ["status", "Status", ["Active", "Inactive"]]],
+    seed: [["Maria Santos", "maria@example.com", "+63 917 555 0101", "Active"], ["Daniel Cruz", "daniel@example.com", "+63 917 555 0102", "Active"], ["Aiko Tanaka", "aiko@example.com", "+63 917 555 0103", "Active"], ["Liam Walker", "liam@example.com", "+63 917 555 0104", "Inactive"]] },
+  users: { title: "User Management", blurb: "Accounts, blocking and rights",
+    rights: R("view:View users", "create:Add users", "edit:Edit users", "block:Block / Unblock", "reset:Reset passwords", "assign:Assign rights", "delete:Delete users") },
+  reports: { title: "Reports & Settings", blurb: "Reports, schedules and settings",
+    rights: R("view:View reports", "export:Export reports", "schedule:Schedule reports", "settings:Edit settings", "audit:View audit log") }
+};
+const ALLK = Object.entries(MODS).flatMap(([m, d]) => d.rights.map(r => m + "." + r[0]));
+const grant = keys => Object.fromEntries(keys.map(k => [k, true]));
+const NEW_KEYS = ["products.view", "customers.view"]; // rights given to newly registered accounts
+const ICONS = {
+  dashboard: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
+  products: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+  hr: '<circle cx="12" cy="7.5" r="3.5"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/>',
+  customers: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14a6.5 6.5 0 0 1 3.5 6"/>',
+  users: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  reports: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'
+};
 
 // Demo accounts used when the page is opened for the first time.
 const demoUsers = [
-  {
-    name: "Super Admin",
-    email: "superadmin@hope.com",
-    pw: "SuperAdmin#1",
-    role: "superadmin",
-    status: "active",
-    blocked: false,
-    needsPasswordSetup: false,
-    rights: { dashboard: true }
-  },
-  {
-    name: "Admin",
-    email: "admin@hope.com",
-    pw: "Admin#1234",
-    role: "admin",
-    status: "active",
-    blocked: false,
-    needsPasswordSetup: false,
-    rights: { dashboard: true }
-  },
-  {
-    name: "User",
-    email: "user@hope.com",
-    pw: "User@User",
-    role: "user",
-    status: "active",
-    blocked: false,
-    needsPasswordSetup: false,
-    rights: { dashboard: true }
-  }
+  { name: "Super Admin", email: "superadmin@hope.com", pw: "SuperAdmin#1", role: "superadmin", status: "active", blocked: false, needsPasswordSetup: false, rights: {} },
+  { name: "Admin", email: "admin@hope.com", pw: "Admin#1234", role: "admin", status: "active", blocked: false, needsPasswordSetup: false,
+    rights: grant(ALLK.filter(function (k) { return k !== "users.delete" && k !== "reports.settings"; })) },
+  { name: "User", email: "user@hope.com", pw: "User@User", role: "user", status: "active", blocked: false, needsPasswordSetup: false,
+    rights: grant(["products.view", "customers.view", "hr.view"]) }
 ];
 
-const USER_STORAGE = "hope_users_v2";
+const USER_STORAGE = "hope_users_v5";
 const roleNames = {
   user: "User",
   admin: "Admin",
@@ -134,7 +139,7 @@ get("ov").addEventListener("click", function (event) {
   if (event.target === get("ov")) closeForm();
 });
 document.addEventListener("keydown", function (event) {
-  if (event.key === "Escape") closeForm();
+  if (event.key === "Escape") { closeForm(); closeModal(); }
 });
 
 // LOG IN
@@ -195,7 +200,7 @@ get("fReg").onsubmit = function (event) {
     status: "pending",
     blocked: false,
     needsPasswordSetup: false,
-    rights: { dashboard: false }
+    rights: {}
   });
 
   saveUsers();
@@ -269,6 +274,8 @@ function showDashboard() {
   get("site").hidden = true;
   get("app").hidden = false;
   window.scrollTo(0, 0);
+  view = "dashboard";
+  setMenu(window.innerWidth > 860);
   fillDashboard();
 }
 
@@ -289,107 +296,234 @@ function fillDashboard() {
   get("avatar").textContent = currentUser.name.charAt(0).toUpperCase();
   get("hello").textContent = "Welcome back, " + firstName + "!";
 
-  const hasAccess = Boolean(currentUser.rights && currentUser.rights.dashboard);
+  // Accounts with no View right on any module see the "access turned off" note.
+  const hasAccess = currentUser.role === "superadmin" || ALLK.some(function (k) { return k.endsWith(".view") && can(currentUser, k); });
   get("dash").hidden = !hasAccess;
   get("locked").hidden = hasAccess;
-  showManageTable();
+  showView(view);
 }
 
-// Add a cell to the account table.
-function addCell(row, text) {
-  const cell = document.createElement("td");
-  cell.textContent = text;
-  row.appendChild(cell);
-  return cell;
-}
-
-// ADMIN TABLE: admins can manage accounts from the existing dashboard layout.
-function showManageTable() {
-  const box = get("mgmt");
-  box.innerHTML = "";
-
-  if (currentUser.role === "user") return;
-
-  const isSuperAdmin = currentUser.role === "superadmin";
-  const accounts = users.filter(function (user) {
-    if (isSuperAdmin) return user.role !== "superadmin";
-    return user.role === "user";
-  });
-
-  const title = document.createElement("h3");
-  title.textContent = isSuperAdmin ? "Manage admins and users" : "Manage users";
-  box.appendChild(title);
-
-  if (accounts.length === 0) {
-    const emptyText = document.createElement("p");
-    emptyText.className = "muted";
-    emptyText.textContent = "No accounts to manage yet.";
-    box.appendChild(emptyText);
-    return;
+/* ===== MODULES: Product, HR, Customer and User management ===== */
+/* ---------- helpers ---------- */
+const store = {
+  get(k, fallback) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fallback; } catch (e) { return fallback; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
+};
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e[k] = v;
+    else e.setAttribute(k, v);
   }
+  kids.flat().forEach(c => e.append(c));
+  return e;
+}
+const icon = k => { const s = el("span", { class: "ic" }); s.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[k] + "</svg>"; return s; };
+const btn = (t, fn, danger) => el("button", { type: "button", class: "ghost sm" + (danger ? " danger" : ""), onclick: fn }, t);
+const lab = (t, i) => el("label", {}, t, i);
+function toast(text) {
+  const t = el("div", { class: "toast", role: "status" }, text);
+  document.body.append(t);
+  setTimeout(() => t.remove(), 2200);
+}
 
-  const table = document.createElement("table");
-  table.innerHTML = "<thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Rights</th><th>Actions</th></tr></thead>";
-  const body = document.createElement("tbody");
-  table.appendChild(body);
 
-  accounts.forEach(function (user) {
-    const row = document.createElement("tr");
-    addCell(row, user.name);
-    addCell(row, user.email);
-    addCell(row, roleNames[user.role]);
+let data = store.get("hope_data_v1", null);
+if (!data || typeof data !== "object") {
+  data = {};
+  for (const [k, m] of Object.entries(MODS)) if (m.cols) data[k] = m.seed.map(r => Object.fromEntries(m.cols.map((c, i) => [c[0], r[i]])));
+}
+const saveData = () => store.set("hope_data_v1", data);
+const editRow = { products: -1, hr: -1, customers: -1 };
 
-    const status = document.createElement("span");
-    status.className = user.blocked ? "tag off" : "tag";
-    status.textContent = user.blocked ? "Blocked" : (user.status === "pending" ? "Pending approval" : "Active");
-    addCell(row, "").appendChild(status);
+/* ---------- generic modal (user form, rights, confirmations) ---------- */
+function modal(node) {
+  const b = get("mdb");
+  b.replaceChildren(node);
+  b.classList.remove("wide");
+  get("md").hidden = false;
+  const f = b.querySelector("input,select,button");
+  if (f) f.focus();
+}
+const closeModal = () => { get("md").hidden = true; };
+get("md").addEventListener("click", e => { if (e.target === get("md")) closeModal(); });
+function confirmBox(title, text, label, go, danger) {
+  modal(el("div", {}, el("h2", {}, title), el("p", { class: "sub" }, text),
+    el("div", { class: "mact mt" },
+      el("button", { type: "button", class: danger ? "danger" : "pri", onclick: () => { closeModal(); go(); } }, label),
+      el("button", { type: "button", class: "ghost", onclick: closeModal }, "Cancel"))));
+}
 
-    const access = document.createElement("input");
-    access.type = "checkbox";
-    access.checked = Boolean(user.rights && user.rights.dashboard);
-    access.onchange = function () {
-      user.rights = { dashboard: access.checked };
-      saveUsers();
+
+/* ---------- slidable sidebar, role-based menu and views ---------- */
+const can = (u, k) => u.role === "superadmin" || !!(u.rights && u.rights[k]);
+const visible = k => k === "users" ? currentUser.role !== "user" && can(currentUser, "users.view") : can(currentUser, k + ".view");
+let view = "dashboard";
+function setMenu(open) {
+  get("app").classList.toggle("collapsed", !open);
+  get("tog").setAttribute("aria-expanded", String(open));
+}
+get("tog").onclick = function () { setMenu(get("app").classList.contains("collapsed")); };
+get("scrim").onclick = function () { setMenu(false); };
+function renderNav() {
+  const keys = ["dashboard", ...Object.keys(MODS).filter(k => k !== "reports" && visible(k))];
+  get("nav").replaceChildren(...keys.map(v => {
+    const a = el("a", { class: "side-link" + (v === view ? " on" : ""), href: "#" }, icon(v), v === "dashboard" ? "Dashboard" : MODS[v].title);
+    if (v === view) a.setAttribute("aria-current", "page");
+    a.onclick = e => { e.preventDefault(); showView(v); if (innerWidth <= 860) setMenu(false); window.scrollTo(0, 0); };
+    return a;
+  }));
+}
+function showView(v) {
+  if (v !== "dashboard" && !(MODS[v] && v !== "reports" && visible(v))) v = "dashboard";
+  view = v;
+  document.querySelectorAll(".view").forEach(x => { x.hidden = x.id !== "v-" + v; });
+  get("vtitle").textContent = v === "dashboard" ? "Dashboard" : MODS[v].title;
+  renderNav();
+  if (v === "users") usersView(); else if (v !== "dashboard") modView(v);
+}
+
+/* ---------- module tables: products, HR, customers ---------- */
+function modView(k) {
+  const m = MODS[k], box = get("v-" + k), rows = data[k], ed = editRow[k];
+  box.replaceChildren(el("h2", { class: "vt" }, m.title));
+  const cC = can(currentUser, k + ".create"), cE = can(currentUser, k + ".edit"), cD = can(currentUser, k + ".delete");
+  if (ed >= 0 || cC) {
+    const fs = m.cols.map(([key, , t]) => {
+      const f = Array.isArray(t) ? el("select", {}, t.map(o => el("option", { value: o }, o))) : el("input", { type: t || "text" });
+      if (t === "number") { f.min = "0"; f.step = "any"; }
+      f.required = true;
+      if (ed >= 0) f.value = rows[ed][key];
+      return f;
+    });
+    const form = el("form", { class: "mform" }, m.cols.map((c, i) => el("label", {}, c[1], fs[i])),
+      el("div", { class: "mact" },
+        el("button", { class: "pri", type: "submit" }, ed >= 0 ? "Save changes" : "Add record"),
+        ed >= 0 ? el("button", { class: "ghost", type: "button", onclick: () => { editRow[k] = -1; modView(k); } }, "Cancel") : ""));
+    form.onsubmit = e => {
+      e.preventDefault();
+      const rec = Object.fromEntries(m.cols.map((c, i) => [c[0], fs[i].value.trim()]));
+      if (ed >= 0) rows[ed] = rec; else rows.push(rec);
+      editRow[k] = -1; saveData(); modView(k); toast(ed >= 0 ? "Changes saved" : "Record added");
     };
+    box.append(form);
+  }
+  if (!rows.length) { box.append(el("p", { class: "muted" }, "No records yet.")); return; }
+  const cell = (key, v) => key === "status" ? el("span", { class: "tag" + (v === "Inactive" || v === "On leave" ? " off" : "") }, v) : key === "price" ? "$" + Number(v).toFixed(2) : v;
+  const acts = cE || cD;
+  const body = rows.map((r, i) => el("tr", {}, m.cols.map(c => el("td", {}, cell(c[0], r[c[0]]))),
+    acts ? el("td", {}, el("div", { class: "racts" },
+      cE ? btn("Edit", () => { editRow[k] = i; modView(k); }) : "",
+      cD ? btn("Delete", () => confirmBox("Delete this record?", "This cannot be undone.", "Delete", () => { rows.splice(i, 1); editRow[k] = -1; saveData(); modView(k); toast("Record deleted"); }, true), true) : "")) : ""));
+  box.append(el("div", { class: "tw" }, el("table", {}, el("thead", {}, el("tr", {}, [...m.cols.map(c => c[1]), ...(acts ? ["Actions"] : [])].map(t => el("th", {}, t)))), el("tbody", {}, body))));
+}
 
-    const accessLabel = document.createElement("label");
-    accessLabel.className = "chk";
-    accessLabel.append(access, "Dashboard access");
-    addCell(row, "").appendChild(accessLabel);
 
-    const actions = addCell(row, "");
+/* ---------- user management (Super Admin and Admin) ---------- */
+const uf = { q: "", role: "all", st: "all" };
+function usersView() {
+  const box = get("v-users"), sa = currentUser.role === "superadmin";
+  box.replaceChildren(el("h2", { class: "vt" }, "User Management"));
+  const q = el("input", { type: "search", placeholder: "Search name or email", "aria-label": "Search users" });
+  q.value = uf.q;
+  const sel = (label, key, opts) => {
+    const s = el("select", { "aria-label": label }, opts.map(([v, t]) => el("option", { value: v }, t)));
+    s.value = uf[key]; s.onchange = () => { uf[key] = s.value; rows(); };
+    return s;
+  };
+  box.append(el("div", { class: "toolbar" }, q,
+    sa ? sel("Filter by role", "role", [["all", "All roles"], ["admin", "Admins"], ["user", "Users"]]) : "", // role filter is hidden from Admins
+    sel("Filter by status", "st", [["all", "All statuses"], ["active", "Active"], ["pending", "Pending approval"], ["blocked", "Blocked"]]),
+    can(currentUser, "users.create") ? el("button", { class: "pri addu", type: "button", onclick: () => userForm() }, "Add user") : ""));
+  const out = el("div", {});
+  box.append(out);
+  q.oninput = () => { uf.q = q.value; rows(); };
+  function rows() {
+    const t = uf.q.trim().toLowerCase();
+    // Super Admin sees admins and users; Admin sees users only (admin and super admin accounts are hidden).
+    const list = users.filter(u => (sa ? u.role !== "superadmin" : u.role === "user")
+      && (!sa || uf.role === "all" || u.role === uf.role)
+      && (uf.st === "all" || (uf.st === "blocked" ? u.blocked : uf.st === "pending" ? u.status === "pending" : !u.blocked && u.status === "active"))
+      && (!t || (u.name + " " + u.email).toLowerCase().includes(t)));
+    out.replaceChildren();
+    if (!list.length) { out.append(el("p", { class: "muted" }, "No accounts match your filters.")); return; }
+    const cE = can(currentUser, "users.edit"), cA = can(currentUser, "users.assign"), cB = can(currentUser, "users.block"), cD = can(currentUser, "users.delete");
+    const trs = list.map(u => el("tr", {},
+      el("td", {}, u.name), el("td", {}, u.email), el("td", {}, roleNames[u.role]),
+      el("td", {}, el("span", { class: "tag" + (u.blocked ? " off" : "") }, u.blocked ? "Blocked" : (u.status === "pending" ? "Pending approval" : "Active"))),
+      el("td", {}, ALLK.filter(k => u.rights && u.rights[k]).length + " / " + ALLK.length),
+      el("td", {}, el("div", { class: "racts" },
+        cE && u.status === "pending" ? el("button", { type: "button", class: "pri sm", onclick: () => { u.status = "active"; u.needsPasswordSetup = true; u.rights = grant(NEW_KEYS); saveUsers(); usersView(); toast("Account approved"); } }, "Approve") : "",
+        cE ? btn("Edit", () => userForm(u)) : "",
+        cA ? btn("Rights", () => rightsDialog(u)) : "",
+        cB ? btn(u.blocked ? "Unblock" : "Block", () => confirmBox((u.blocked ? "Unblock " : "Block ") + u.name + "?",
+          u.blocked ? "They will be able to log in again." : "They will not be able to log in until unblocked.",
+          u.blocked ? "Unblock" : "Block", () => { u.blocked = !u.blocked; saveUsers(); usersView(); toast(u.blocked ? "User blocked" : "User unblocked"); }, !u.blocked), !u.blocked) : "",
+        cD ? btn("Delete", () => confirmBox("Delete " + u.name + "?", "The account is removed permanently.", "Delete",
+          () => { users.splice(users.indexOf(u), 1); saveUsers(); usersView(); toast("User deleted"); }, true), true) : ""))));
+    out.append(el("div", { class: "tw" }, el("table", {}, el("thead", {}, el("tr", {}, ["Name", "Email", "Role", "Status", "Rights", "Actions"].map(h => el("th", {}, h)))), el("tbody", {}, trs))));
+  }
+  rows();
+}
 
-    if (user.status === "pending") {
-      const approve = document.createElement("button");
-      approve.type = "button";
-      approve.className = "pri sm";
-      approve.textContent = "Approve";
-      approve.onclick = function () {
-        user.status = "active";
-        user.needsPasswordSetup = true;
-        user.rights = { dashboard: true };
-        saveUsers();
-        showManageTable();
-      };
-      actions.appendChild(approve);
+function userForm(u) {
+  const sa = currentUser.role === "superadmin";
+  const n = el("input", { type: "text", autocomplete: "off" }), e = el("input", { type: "email" });
+  const p = el("input", { type: "password", minlength: "6", autocomplete: "new-password" });
+  const r = el("select", {}, (sa ? ["admin", "user"] : ["user"]).map(x => el("option", { value: x }, roleNames[x]))); // "Admin" option is hidden from Admins
+  n.required = e.required = true;
+  if (u) { n.value = u.name; e.value = u.email; r.value = u.role; } else p.required = true;
+  const err = el("div", { class: "msg", role: "status" });
+  const f = el("form", { class: "uf" }, el("h2", {}, u ? "Edit user" : "Add user"),
+    el("p", { class: "sub" }, u ? "Update the account details." : "The user sets their own password at first login."),
+    lab("Full name", n), lab("Email", e), lab("Role", r), u ? "" : lab("Temporary password", p), err,
+    el("div", { class: "mact mt" }, el("button", { class: "pri", type: "submit" }, u ? "Save changes" : "Add user"), el("button", { class: "ghost", type: "button", onclick: closeModal }, "Cancel")));
+  f.onsubmit = ev => {
+    ev.preventDefault();
+    const dup = findUser(e.value);
+    if (dup && dup !== u) { err.textContent = "That email is already registered."; return; }
+    const role = sa ? r.value : "user";
+    if (u) Object.assign(u, { name: n.value.trim(), email: e.value.trim().toLowerCase(), role });
+    else users.push({ name: n.value.trim(), email: e.value.trim().toLowerCase(), pw: p.value, role, status: "active", blocked: false, needsPasswordSetup: true, rights: grant(NEW_KEYS) });
+    saveUsers(); closeModal(); usersView(); toast(u ? "Changes saved" : "User added");
+  };
+  modal(f);
+}
+
+
+/* ---------- rights assignment dialog: 5 modules, 36 rights ---------- */
+function rightsDialog(u) {
+  const sa = currentUser.role === "superadmin", draft = Object.assign({}, u.rights), inputs = {}, masters = {};
+  const grantable = k => sa || can(currentUser, k); // an Admin can only grant rights they hold
+  const count = el("strong", { "aria-live": "polite" });
+  const sync = () => {
+    count.textContent = ALLK.filter(k => draft[k]).length + " of " + ALLK.length + " selected";
+    for (const [m, d] of Object.entries(MODS)) {
+      const ks = d.rights.map(x => m + "." + x[0]).filter(grantable), n = ks.filter(k => draft[k]).length, c = masters[m];
+      c.checked = ks.length > 0 && n === ks.length; c.indeterminate = n > 0 && n < ks.length; c.disabled = !ks.length;
     }
-
-    const block = document.createElement("button");
-    block.type = "button";
-    block.className = user.blocked ? "ghost sm" : "ghost sm danger";
-    block.textContent = user.blocked ? "Unblock" : "Block";
-    block.style.marginLeft = user.status === "pending" ? "6px" : "0";
-    block.onclick = function () {
-      user.blocked = !user.blocked;
-      saveUsers();
-      showManageTable();
-    };
-    actions.appendChild(block);
-    body.appendChild(row);
+    ALLK.forEach(k => { inputs[k].checked = !!draft[k]; });
+  };
+  const setMany = (ks, v) => { ks.filter(grantable).forEach(k => { draft[k] = v; }); sync(); };
+  const cards = Object.entries(MODS).map(([m, d]) => {
+    const ks = d.rights.map(x => m + "." + x[0]);
+    const mc = el("input", { type: "checkbox" }); masters[m] = mc; mc.onchange = () => setMany(ks, mc.checked);
+    return el("fieldset", { class: "rcard" }, el("legend", {}, el("label", { class: "chk" }, mc, d.title)),
+      d.rights.map(([a, lbl]) => {
+        const k = m + "." + a, c = el("input", { type: "checkbox" });
+        inputs[k] = c; c.disabled = !grantable(k); c.onchange = () => { draft[k] = c.checked; sync(); };
+        return el("label", { class: "rt" + (c.disabled ? " dis" : ""), title: c.disabled ? "You don't hold this right, so you can't grant it." : "" }, c, lbl);
+      }));
   });
-
-  const tableBox = document.createElement("div");
-  tableBox.className = "tw";
-  tableBox.appendChild(table);
-  box.appendChild(tableBox);
+  const wrap = el("div", {}, el("h2", {}, "Rights: " + u.name), el("p", { class: "sub" }, roleNames[u.role] + " · " + u.email),
+    el("div", { class: "rbar" }, count, btn("Select all", () => setMany(ALLK, true)), btn("Clear all", () => setMany(ALLK, false))),
+    sa ? "" : el("p", { class: "muted note" }, "Greyed-out rights are ones you don't hold, so you can't grant them."),
+    el("div", { class: "rg" }, cards),
+    el("div", { class: "mact mt" },
+      el("button", { class: "pri", type: "button", onclick: () => { u.rights = draft; saveUsers(); closeModal(); usersView(); toast("Rights saved"); } }, "Save rights"),
+      el("button", { class: "ghost", type: "button", onclick: closeModal }, "Cancel")));
+  modal(wrap);
+  get("mdb").classList.add("wide");
+  sync();
 }
