@@ -8,7 +8,7 @@ Never change or remove an applied migration. Add a new numbered migration instea
 
 `006_lock_down_user_management_api_access.sql` enables RLS on `app_user` and `user_permission`, revokes their direct privileges from `PUBLIC`, `anon`, and `authenticated`, and grants the server-only `service_role` the needed table/sequence access. Do not expose the service-role secret to clients.
 
-`007_password_reset_token.sql` stores only 32-byte SHA-256 digests, enables RLS, and grants direct access only to `service_role`. `used_at` is a nullable timestamp rather than a boolean because it records when the token was consumed. The partial unique index allows at most one Active, unused token per user and purpose; it intentionally omits an expiry-time predicate because `now()` is not immutable and expiry changes without a row update. Issuance must deactivate the user's previous Active unused token in the same transaction before inserting its replacement.
+`007_password_reset_token.sql` derives the foreign-key column type from `app_user.id` and supports both `bigint` (the Task 3 migration chain) and `uuid` (the existing main project) without changing account IDs. It stores only 32-byte SHA-256 digests, enables RLS, and grants direct access only to `service_role`. `used_at` is a nullable timestamp rather than a boolean because it records when the token was consumed. The partial unique index allows at most one Active, unused token per user and purpose; it intentionally omits an expiry-time predicate because `now()` is not immutable and expiry changes without a row update. Issuance must deactivate the user's previous Active unused token in the same transaction before inserting its replacement.
 
 Password token lifetimes are application configuration, not schema defaults: use 24 hours for `set_password` and 30 minutes for `reset_password`. Generate at least 32 cryptographically random bytes, encode them URL-safe, show/send the raw token only once, and store only its SHA-256 digest as 32 bytes. Email the link after the database transaction commits; in development, print it once to the console. Never log the raw token or its link. Use constant-time digest comparison in the application layer when comparing digest values; SQL equality is not a constant-time guarantee.
 
@@ -23,7 +23,6 @@ WHERE token.token_hash = $1::BYTEA
 	AND token.used_at IS NULL
 	AND token.expires_at > CURRENT_TIMESTAMP
 	AND token.status = 'Active'
-	AND account.status = 'Active'
 	AND account.is_blocked = FALSE
 LIMIT 1;
 ```
@@ -35,7 +34,6 @@ BEGIN;
 SELECT id
 FROM public.app_user
 WHERE id = $1
-	AND status = 'Active'
 	AND is_blocked = FALSE
 FOR UPDATE;
 

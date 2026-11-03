@@ -78,3 +78,11 @@ jobs:
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql
       - name: Verify password reset token lifecycle and access
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/password_reset_token_verification.sql
+      - name: Verify password reset token supports UUID user IDs
+        run: |
+          psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -c 'CREATE DATABASE hope_uuid_test'
+          psql -h localhost -U postgres -d hope_uuid_test -v ON_ERROR_STOP=1 -c 'CREATE TABLE public.app_user (id UUID PRIMARY KEY, is_blocked BOOLEAN NOT NULL DEFAULT FALSE)'
+          psql -h localhost -U postgres -d hope_uuid_test -v ON_ERROR_STOP=1 -f db/migrations/007_password_reset_token.sql
+          uuid_user_id_type="$(psql -h localhost -U postgres -d hope_uuid_test -At -c "SELECT udt_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'password_reset_token' AND column_name = 'user_id'")"
+          printf '%s\n' "$uuid_user_id_type"
+          echo "$uuid_user_id_type" | grep -Fx 'uuid'

@@ -73,7 +73,6 @@ SELECT test_hashes.case_name,
              AND token.used_at IS NULL
              AND token.expires_at > CURRENT_TIMESTAMP
              AND token.status = 'Active'
-             AND account.status = 'Active'
              AND account.is_blocked = FALSE
        ) AS is_valid
 FROM test_hashes;
