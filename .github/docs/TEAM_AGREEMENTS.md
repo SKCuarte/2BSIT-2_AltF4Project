@@ -53,3 +53,20 @@ A deliverable, feature, or task is formally considered **Done** only when all of
 
 ### Grading & Assessment Criteria
 - Deliverables are evaluated based on **PR quality**, adherence to the **Definition of Done**, accurate issue linking, and overall contribution consistency throughout the sprint.
+
+## Definition of Done (DoD) & Testing Threshold
+
+To mark any user story or feature complete, the following testing threshold must be met:
+* **Test Coverage & Execution**: 100% of defined critical-path acceptance criteria must have passing test cases (manual or automated).
+* **Defect Policy**: Zero unresolved high or critical (blocking) severity bugs.
+* **Verification**: Quality Assurance must execute and verify feature functionality against acceptance criteria prior to merging into `main`.
+
+---
+
+## Role-Based Contribution & PR Guidelines
+
+To ensure fair evaluation across all project roles:
+
+* **Developer & DBA**: Minimum of **1 to 2 merged PRs per sprint** containing code, migrations, or database schema scripts.
+* **Tester (QA)**: Evaluated via submission of test plans, test execution reports, and bug reports/issues. Must submit at least **1 PR containing documented test specifications/matrices** or contribute inline reviews and sign-offs on functional PRs.
+* **UI/UX Designer**: Evaluated via wireframes, design specifications, and UI asset integration. Must submit at least **1 PR containing layout templates, styling assets, or UI documentation**, or co-author visual integration PRs with the lead developer.
