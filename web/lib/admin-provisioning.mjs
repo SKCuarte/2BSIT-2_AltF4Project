@@ -1,6 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { MUST_CHANGE_PASSWORD_KEY } from "./auth-policy.mjs";
-import { findActiveRoleId, findActiveRoleName } from "./role-lookup.mjs";
+import {
+  findActiveRoleId,
+  findActiveRoleName,
+  findAppUserRoleColumn,
+} from "./role-lookup.mjs";
 
 const GENERIC_PROVISIONING_ERROR =
   "Unable to create this account. Verify the details or try again later.";
@@ -10,9 +14,31 @@ export function generateTemporaryPassword() {
 }
 
 export async function getAdminProvisioningAccess(admin, authUserId) {
+  const roleSchema = await findAppUserRoleColumn(admin);
+  if (roleSchema.error || !roleSchema.roleColumn) {
+    console.error("Admin provisioning role schema lookup failed:", {
+      code: roleSchema.error?.code ?? "role_column_missing",
+    });
+    return { status: "unavailable" };
+  }
+
+  const { error: statusColumnError } = await admin
+    .from("app_user")
+    .select("status")
+    .limit(0);
+  if (statusColumnError && statusColumnError.code !== "42703") {
+    console.error("Admin provisioning status schema lookup failed:", {
+      code: statusColumnError.code ?? "status_column_lookup_failed",
+    });
+    return { status: "unavailable" };
+  }
+  const statusColumn = statusColumnError ? null : "status";
+
   const { data: account, error: accountError } = await admin
     .from("app_user")
-    .select("role_id, is_blocked, approval_status")
+    .select(
+      `${roleSchema.roleColumn}, is_blocked, approval_status${statusColumn ? ", status" : ""}`
+    )
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 
@@ -23,30 +49,39 @@ export async function getAdminProvisioningAccess(admin, authUserId) {
     return { status: "unavailable" };
   }
 
-  if (!account || account.is_blocked || account.approval_status !== "Approved") {
+  if (
+    !account ||
+    account.is_blocked ||
+    account.approval_status !== "Approved" ||
+    (statusColumn && account.status !== "Active")
+  ) {
     return { status: "forbidden" };
   }
 
   let roleResult;
-  try {
-    roleResult = await findActiveRoleName(admin, account.role_id);
-  } catch (error) {
-    console.error("Admin provisioning role lookup failed:", {
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return { status: "unavailable" };
+  if (roleSchema.roleColumn === "role_id") {
+    try {
+      roleResult = await findActiveRoleName(admin, account.role_id);
+    } catch (error) {
+      console.error("Admin provisioning role lookup failed:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+      return { status: "unavailable" };
+    }
+    if (roleResult.error) {
+      console.error("Admin provisioning role lookup failed:", {
+        code: roleResult.error.code ?? "role_lookup_failed",
+      });
+      return { status: "unavailable" };
+    }
   }
-  if (roleResult.error) {
-    console.error("Admin provisioning role lookup failed:", {
-      code: roleResult.error.code ?? "role_lookup_failed",
-    });
-    return { status: "unavailable" };
-  }
-  if (!["Admin", "Superadmin"].includes(roleResult.roleName)) {
-    return { status: "forbidden" };
+  const roleName =
+    roleSchema.roleColumn === "role_id" ? roleResult.roleName : account.role;
+  if (!["Admin", "Superadmin"].includes(roleName)) {
+    return { status: "forbidden", roleName };
   }
 
-  return { status: "allowed" };
+  return { status: "allowed", roleName };
 }
 
 export function validateProvisioningInput(value) {
@@ -86,12 +121,10 @@ export function validateProvisioningInput(value) {
 }
 
 export async function provisionRegularUser(admin, input) {
-  let roleResult;
-  try {
-    roleResult = await findActiveRoleId(admin, "User");
-  } catch (error) {
-    console.error("Admin provisioning User role lookup failed:", {
-      message: error instanceof Error ? error.message : "Unknown error",
+  const roleSchema = await findAppUserRoleColumn(admin);
+  if (roleSchema.error || !roleSchema.roleColumn) {
+    console.error("Admin provisioning role schema lookup failed:", {
+      code: roleSchema.error?.code ?? "role_column_missing",
     });
     return {
       ok: false,
@@ -99,15 +132,33 @@ export async function provisionRegularUser(admin, input) {
       error: GENERIC_PROVISIONING_ERROR,
     };
   }
-  if (roleResult.error || roleResult.roleId === null) {
-    console.error("Admin provisioning User role lookup failed:", {
-      code: roleResult.error?.code ?? "active_user_role_missing",
-    });
-    return {
-      ok: false,
-      status: 503,
-      error: GENERIC_PROVISIONING_ERROR,
-    };
+
+  let userRoleId = null;
+  if (roleSchema.roleColumn === "role_id") {
+    let roleResult;
+    try {
+      roleResult = await findActiveRoleId(admin, "User");
+    } catch (error) {
+      console.error("Admin provisioning User role lookup failed:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+      return {
+        ok: false,
+        status: 503,
+        error: GENERIC_PROVISIONING_ERROR,
+      };
+    }
+    if (roleResult.error || roleResult.roleId === null) {
+      console.error("Admin provisioning User role lookup failed:", {
+        code: roleResult.error?.code ?? "active_user_role_missing",
+      });
+      return {
+        ok: false,
+        status: 503,
+        error: GENERIC_PROVISIONING_ERROR,
+      };
+    }
+    userRoleId = roleResult.roleId;
   }
 
   const temporaryPassword = generateTemporaryPassword();
@@ -134,15 +185,21 @@ export async function provisionRegularUser(admin, input) {
     };
   }
 
-  const { error: profileError } = await admin.from("app_user").insert({
+  const profile = {
     auth_user_id: authData.user.id,
     first_name: input.firstName,
     last_name: input.lastName,
     email: input.email,
-    role_id: roleResult.roleId,
+    role_id: userRoleId,
     is_blocked: false,
     approval_status: "Pending",
-  });
+  };
+  if (roleSchema.roleColumn === "role") {
+    delete profile.role_id;
+    profile.role = "User";
+  }
+
+  const { error: profileError } = await admin.from("app_user").insert(profile);
 
   if (profileError) {
     console.error("Admin provisioning profile insert failed:", {

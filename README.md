@@ -36,7 +36,7 @@ The login flow uses Supabase Auth and cookie-backed `@supabase/ssr` sessions. Th
 
 For S1-DEV-03, the authentication routes use the schema from `db/migrations/003_user_management.sql` and `004_supabase_auth_profiles.sql`: `app_user` has a BIGINT `id`, a UUID `auth_user_id`, and a BIGINT `role_id` foreign key to `public.role(id)`, alongside `status`, `is_blocked`, and `approval_status`. Resolve role names through the `public.role` table; `app_user` does not have a text `role` column. Do not apply alternate schemas or migrations without an approved reconciliation and backfill plan.
 
-The active database migrations remove `must_set_password` from `public.app_user`; they do not define `profiles.must_change_password`. The Dashboard includes an Admin-only user creation flow that creates a regular User with `approval_status = 'Pending'` and sets `app_metadata.must_change_password: true` using the server-side Supabase Auth Admin API. The temporary password is shown once to the authorized Admin. Manual public registration creates a Pending Auth user with a random password and uses a signed HTTP-only browser claim; no email verification is sent, so an Admin must verify the person and claimed Gmail independently before approval. After approval, the claim allows first-password setup, which clears the Auth metadata flag and redirects the user to Login. Never set the first-login flag from browser code or expose the service-role key.
+The active database migrations remove `must_set_password` from `public.app_user`; they do not define `profiles.must_change_password`. User Management lets approved, active Admins and Superadmins create regular Users with `approval_status = 'Pending'` and `app_metadata.must_change_password: true` using the server-side Supabase Auth Admin API. The temporary password is shown once to the administrator. Manual public registration creates a Pending Auth user with a random password and uses a signed HTTP-only browser claim; no email verification is sent, so an administrator must verify the person and claimed Gmail independently before approval. After approval, the claim allows first-password setup, which clears the Auth metadata flag and redirects the user to Login. Never set the first-login flag from browser code or expose the service-role key.
 
 ## Password recovery setup (S1-DEV-04)
 
@@ -51,6 +51,12 @@ In Supabase Dashboard, set the **Site URL** to the deployed app origin and add t
 Replace `<exact-preview-host>` with the hostname of the Preview site, then add the full callback URL under **Authentication → URL Configuration → Redirect URLs**. The app builds the callback from the current site origin, so local and Preview requests return to the same environment that requested the email.
 
 Keep the Supabase Auth email provider enabled. The password recovery email template must retain Supabase's confirmation link (the default `{{ .ConfirmationURL }}` works); Supabase sends the link to the callback above. Ensure recovery links have an expiration configured. Supabase's built-in SMTP is restricted to pre-authorized project-team email addresses and is limited to 2 emails per hour. Use a custom SMTP provider in **Authentication → SMTP Settings** for other recipients or regular testing/production delivery. Email branding and a shorter expiry are optional recommendations.
+
+## User Management (S1-DEV-05)
+
+Approved, active Admins and Superadmins can open **User Management** from the Dashboard. Admins can view and manage regular User accounts only; Superadmins can also manage Admin accounts. Superadmin accounts are excluded. The list supports name/email search, role and status filters where applicable, and pagination. Administrators can add regular Users, edit first and last names, and block or unblock eligible accounts. Email, role, approval status, and account status are not editable here. New accounts remain Pending and keep the existing first-login password setup flow.
+
+The page and each API operation verify the signed-in administrator and target role on the server. Blocking updates the existing `app_user.is_blocked` field, which the login route and Next.js proxy already enforce. The existing server-side Supabase Auth provisioning flow creates the Auth identity and application profile; no new SQL migration or Supabase Dashboard setting is required for this feature.
 
 ---
 

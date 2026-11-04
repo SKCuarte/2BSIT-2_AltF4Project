@@ -7,7 +7,11 @@ type CreatedAccount = {
   temporaryPassword: string;
 };
 
-export function AdminUserProvisioningForm() {
+export function AdminUserProvisioningForm({
+  onCreated,
+}: {
+  onCreated?: () => void;
+}) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -64,6 +68,7 @@ export function AdminUserProvisioningForm() {
       setFirstName("");
       setLastName("");
       setEmail("");
+      onCreated?.();
     } catch {
       setErrorMessage("Account creation is unavailable. Please try again.");
     } finally {
