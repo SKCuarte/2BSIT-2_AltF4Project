@@ -4,7 +4,24 @@ const dotenv = require('dotenv');
 const { Client } = require('pg');
 
 const root = path.resolve(__dirname, '../../..');
-dotenv.config({ path: path.join(root, '.env') });
+const envFileIndex = process.argv.indexOf('--env-file');
+const selectedEnvFile = envFileIndex >= 0 ? process.argv[envFileIndex + 1] : null;
+if (envFileIndex >= 0 && !selectedEnvFile) {
+  throw new Error('--env-file requires a path, for example web/.env.local.');
+}
+dotenv.config({
+  path: selectedEnvFile ? path.resolve(root, selectedEnvFile) : path.join(root, '.env'),
+  override: Boolean(selectedEnvFile),
+});
+
+if (selectedEnvFile) {
+  if (!process.env.SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    process.env.SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  }
+  if (!process.env.SUPABASE_SECRET_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    process.env.SUPABASE_SECRET_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  }
+}
 
 const localHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 
@@ -32,15 +49,33 @@ function assertDevOnly(action) {
 }
 
 async function connect() {
-  const client = new Client({
-    host: required('DB_HOST'),
-    port: Number(process.env.DB_PORT || 5432),
-    database: required('DB_NAME'),
-    user: required('DB_USER'),
-    password: required('DB_PASSWORD'),
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : undefined,
-    connectionTimeoutMillis: 10000,
-  });
+  const connectionString = process.env.DATABASE_URL;
+  const clientConfig = connectionString
+    ? { connectionString }
+    : {
+        host: required('DB_HOST'),
+        port: Number(process.env.DB_PORT || 5432),
+        database: required('DB_NAME'),
+        user: required('DB_USER'),
+        password: required('DB_PASSWORD'),
+      };
+
+  if (process.env.DB_SSL === 'true' || process.env.DATABASE_SSL === 'true') {
+    clientConfig.ssl = { rejectUnauthorized: true };
+  }
+  clientConfig.connectionTimeoutMillis = 10000;
+
+  if (selectedEnvFile && connectionString) {
+    const databaseUrl = new URL(connectionString);
+    const projectRef = new URL(required('SUPABASE_URL')).hostname.split('.')[0];
+    const databaseMatchesProject = databaseUrl.hostname === `db.${projectRef}.supabase.co`
+      || decodeURIComponent(databaseUrl.username).endsWith(`.${projectRef}`);
+    if (!databaseMatchesProject) {
+      throw new Error('DATABASE_URL and SUPABASE_URL must point to the same Supabase project.');
+    }
+  }
+
+  const client = new Client(clientConfig);
   await client.connect();
   return client;
 }

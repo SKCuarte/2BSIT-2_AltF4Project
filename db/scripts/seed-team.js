@@ -2,7 +2,16 @@ const path = require('node:path');
 const { connect, ensureAppUser, readTeamFile, root } = require('./lib/accounts');
 
 async function main() {
-  const file = path.resolve(process.argv[2] || path.join(root, 'db', 'seeds', 'team.csv'));
+  const args = process.argv.slice(2);
+  let teamFile = null;
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === '--env-file') {
+      index += 1;
+    } else if (!args[index].startsWith('--') && teamFile === null) {
+      teamFile = args[index];
+    }
+  }
+  const file = path.resolve(teamFile || path.join(root, 'db', 'seeds', 'team.csv'));
   const members = await readTeamFile(file);
 
   const client = await connect();

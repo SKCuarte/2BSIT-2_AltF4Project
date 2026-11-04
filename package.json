@@ -12,8 +12,10 @@
     "db:reset": "node db/scripts/db.js reset",
     "db:seed": "node db/scripts/seed.js",
     "db:seed:team": "node db/scripts/seed-team.js",
+    "db:seed:team:web": "node db/scripts/seed-team.js --env-file web/.env.local",
     "db:seed:dev": "node db/scripts/seed-dev-users.js",
     "db:setup-links": "node db/scripts/issue-setup-links.js",
+    "db:setup-links:web": "node db/scripts/issue-setup-links.js --env-file web/.env.local",
     "check:secrets": "node db/scripts/check-sql-secrets.js"
   },
   "dependencies": {
