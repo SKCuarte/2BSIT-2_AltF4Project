@@ -20,11 +20,27 @@
   --sidebar-muted: #8fa6b4;
   --sidebar-active: #16798d;
 
-  --font: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font: "Avenir Next", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* Uses the shared light theme from S1-UIX-01 and S1-UIX-02. */
-
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b161e;
+    --surface: #112029;
+    --soft: #0f1c25;
+    --text: #e6eef3;
+    --muted: #8ea3b2;
+    --border: #223540;
+    --accent: #5cc4d6;
+    --accent-dark: #82d4e2;
+    --accent-light: #173742;
+    --on-accent: #06222a;
+    --sun: #f2b258;
+    --sun-light: #3d3220;
+    --danger: #f08a7e;
+    color-scheme: dark;
+  }
+}
 
 
 * { box-sizing: border-box; }
@@ -246,6 +262,7 @@ footer { text-align: center; color: var(--muted); padding: 28px 6vw; font-size: 
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2), 0 0 32px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 .dialog h2 { font-size: 1.5rem; }
+.sub { color: var(--muted); margin: 6px 0 10px; }
 
 .x {                                    
   position: absolute;
@@ -281,7 +298,7 @@ input:focus { border-color: var(--accent); }
 /*DASHBOARD (after login)*/
 
 /* Layout: sidebar on the left, content on the right */
-.shell { display: flex; min-height: 100vh; }
+.shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
 
 #site:not([hidden]),
 #app:not([hidden]) {
@@ -302,10 +319,6 @@ input:focus { border-color: var(--accent); }
   position: sticky;
   top: 0;
   height: 100vh;
-  width: 240px;
-  flex: none;
-  z-index: 15;
-  transition: margin-left 0.25s ease, visibility 0s;
 }
 .side-top { padding: 20px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .side .logo { color: #ffffff; }
@@ -355,7 +368,7 @@ input:focus { border-color: var(--accent); }
 .side-out:hover { color: #ffffff; }
 
 /* CONTENTS */
-.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.main { min-width: 0; display: flex; flex-direction: column; }
 .top {
   display: flex;
   align-items: center;
@@ -520,9 +533,12 @@ tr:last-child td { border-bottom: 0; }
   .hero h1 { max-width: none; }
   .hero-art { order: -1; max-width: 460px; }
 
-  /* Dashboard: the sidebar slides over the page and starts closed */
-  .side { position: fixed; left: 0; top: 0; bottom: 0; }
-  .shell:not(.collapsed) .scrim { display: block; }
+  /* Dashboard: the sidebar becomes a bar at the top */
+  .shell { grid-template-columns: 1fr; }
+  .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .side-top { border: 0; }
+  .side-user { border: 0; order: 2; }
+  .side-nav { order: 3; flex: 0 0 100%; padding: 0 12px 12px; }
   .top { position: static; }
 }
 
@@ -537,56 +553,3 @@ tr:last-child td { border-bottom: 0; }
     animation-iteration-count: 1 !important;
   }
 }
-
-
-/* Added authentication copy and workflow states; existing page layout is preserved. */
-.dialog {
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.dialog .msg:empty {
-  display: none;
-}
-.dialog .msg.ok {
-  color: var(--accent);
-}
-.dialog #previewReset {
-  margin-top: 10px;
-}
-
-/* ===== MODULES: slidable sidebar, module tables, user management, rights ===== */
-.sub { color: var(--muted); margin: 6px 0 10px; }
-.ic { display: inline-flex; }
-.scrim { display: none; position: fixed; inset: 0; background: rgba(10, 22, 30, 0.5); z-index: 12; }
-.shell.collapsed .side { margin-left: -240px; visibility: hidden; transition: margin-left 0.25s ease, visibility 0s 0.25s; }
-.top-l { display: flex; align-items: center; gap: 12px; }
-.tog { padding: 7px 9px; line-height: 0; }
-.tog svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
-.side-link { line-height: 1.3; }
-.side-link svg { flex: none; }
-.side-link:not(.on):hover { background: rgba(255, 255, 255, 0.07); }
-
-.vt { font-size: 1.5rem; margin-bottom: 18px; }
-.mform { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 20px; }
-.mform label { margin: 0; }
-.mform input, .mform select, .toolbar input, .toolbar select, .uf label input, .uf label select {
-  font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text);
-}
-.mform input, .mform select { width: 100%; margin-top: 5px; }
-.mact, .racts { display: flex; gap: 8px; }
-.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
-.toolbar input { flex: 1; min-width: 200px; }
-.addu { margin-left: auto; }
-.mt { margin-top: 18px; }
-.dialog.wide { max-width: 780px; }
-.uf label { margin: 14px 0 0; }
-.uf label input, .uf label select { display: block; width: 100%; margin-top: 5px; }
-.rbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 14px 0; }
-.rbar strong { margin-right: auto; }
-.rg { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
-.rcard { border: 1px solid var(--border); border-radius: 12px; padding: 8px 14px 12px; margin: 0; min-width: 0; }
-.rcard legend { font-weight: 700; padding: 0 6px; }
-.rcard legend .chk { margin: 0; }
-.rt { display: flex; align-items: center; gap: 8px; margin: 7px 0 0; font-weight: 500; }
-.rt.dis { color: var(--muted); opacity: 0.7; }
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 10px; font-size: 0.92rem; z-index: 30; }
