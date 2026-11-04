@@ -1,10 +1,9 @@
-const crypto = require('node:crypto');
-const { connect, required } = require('./lib/accounts');
+const path = require('node:path');
+const { readTeamFile, required, root } = require('./lib/accounts');
 
 const args = process.argv.slice(2);
 const emailIndex = args.indexOf('--email');
 const emailFilter = emailIndex >= 0 ? (args[emailIndex + 1] || '').trim().toLowerCase() : '';
-const assumeNoPassword = args.includes('--assume-no-password');
 
 function setupBaseUrl() {
   const url = new URL(required('APP_BASE_URL'));
@@ -13,75 +12,46 @@ function setupBaseUrl() {
   return url.origin;
 }
 
-function setupTtlHours() {
-  const hours = Number(process.env.SET_PASSWORD_TTL_HOURS || 24);
-  if (!Number.isInteger(hours) || hours < 1 || hours > 168) {
-    throw new Error('SET_PASSWORD_TTL_HOURS must be a whole number from 1 to 168.');
-  }
-  return hours;
+function getApi() {
+  const base = required('SUPABASE_URL').replace(/\/+$/, '');
+  const key = required('SUPABASE_SECRET_KEY');
+  const headers = { apikey: key, 'Content-Type': 'application/json' };
+  if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`;
+  return { base, headers };
 }
 
-async function pendingAccounts(client) {
-  const passwordColumn = await client.query(
-    "SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'encrypted_password'",
-  );
-  if (passwordColumn.rowCount === 0 && !assumeNoPassword) {
-    throw new Error('auth.users.encrypted_password is unavailable (local stub?). Re-run with --assume-no-password to cover every unblocked account.');
+async function findAuthUser(api, email) {
+  for (let page = 1; page <= 50; page += 1) {
+    const response = await fetch(`${api.base}/auth/v1/admin/users?page=${page}&per_page=200`, { headers: api.headers });
+    if (!response.ok) throw new Error(`Supabase Auth lookup failed (HTTP ${response.status}).`);
+    const users = (await response.json()).users || [];
+    const match = users.find((user) => (user.email || '').toLowerCase() === email);
+    if (match) return match;
+    if (users.length < 200) return null;
   }
-  const conditions = ['account.is_blocked = FALSE'];
-  const params = [];
-  if (passwordColumn.rowCount > 0) {
-    conditions.push("COALESCE(auth_account.encrypted_password, '') = ''");
-    conditions.push("COALESCE(auth_account.raw_app_meta_data->>'provider', 'email') = 'email'");
-  }
-  if (emailFilter) {
-    params.push(emailFilter);
-    conditions.push(`account.email = $${params.length}`);
-  }
-  const result = await client.query(
-    `SELECT account.id, account.email
-     FROM public.app_user account
-     JOIN auth.users auth_account ON auth_account.id = account.auth_user_id
-     WHERE ${conditions.join(' AND ')}
-     ORDER BY account.email`,
-    params,
-  );
-  return result.rows;
+  return null;
 }
 
-// Same transaction as the documented issuance SQL: lock account, invalidate older link, insert new hash.
-async function issue(client, account, ttlHours) {
-  const token = crypto.randomBytes(32).toString('base64url');
-  const digest = crypto.createHash('sha256').update(token).digest();
-  await client.query('BEGIN');
-  try {
-    const locked = await client.query(
-      'SELECT id FROM public.app_user WHERE id = $1 AND is_blocked = FALSE FOR UPDATE',
-      [account.id],
-    );
-    if (locked.rowCount === 0) {
-      await client.query('ROLLBACK');
-      return null;
-    }
-    await client.query(
-      `UPDATE public.password_reset_token
-       SET status = 'Inactive',
-           stamp = 'INVALIDATED system ' || to_char(CURRENT_TIMESTAMP, 'YYYY-MM-DD FMHH12:MI AM')
-       WHERE user_id = $1 AND purpose = 'set_password' AND status = 'Active' AND used_at IS NULL`,
-      [account.id],
-    );
-    const inserted = await client.query(
-      `INSERT INTO public.password_reset_token (user_id, purpose, token_hash, expires_at)
-       VALUES ($1, 'set_password', $2, CURRENT_TIMESTAMP + make_interval(hours => $3::int))
-       RETURNING expires_at`,
-      [account.id, digest, ttlHours],
-    );
-    await client.query('COMMIT');
-    return { token, expiresAt: inserted.rows[0].expires_at };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  }
+async function findAppUser(api, email) {
+  const url = new URL(`${api.base}/rest/v1/app_user`);
+  url.searchParams.set('select', 'is_blocked');
+  url.searchParams.set('email', `eq.${email}`);
+  const response = await fetch(url, { headers: api.headers });
+  if (!response.ok) throw new Error(`app_user lookup failed (HTTP ${response.status}).`);
+  return (await response.json())[0] || null;
+}
+
+async function recoveryLink(api, baseUrl, email) {
+  const response = await fetch(`${api.base}/auth/v1/admin/generate_link`, {
+    method: 'POST',
+    headers: api.headers,
+    body: JSON.stringify({ type: 'recovery', email }),
+  });
+  if (!response.ok) throw new Error(`Supabase could not generate a link (HTTP ${response.status}).`);
+  const hashedToken = (await response.json()).hashed_token;
+  if (!hashedToken) throw new Error('Supabase returned no recovery token.');
+  // Fragment keeps the one-time token out of server and proxy logs.
+  return `${baseUrl}/auth/recovery-callback#token_hash=${encodeURIComponent(hashedToken)}&type=recovery`;
 }
 
 async function main() {
@@ -89,24 +59,28 @@ async function main() {
     throw new Error('Refusing to print one-time links to a non-interactive stream; run this in a terminal.');
   }
   const baseUrl = setupBaseUrl();
-  const ttlHours = setupTtlHours();
-
-  const client = await connect();
-  try {
-    const accounts = await pendingAccounts(client);
-    if (accounts.length === 0) {
-      console.log('No accounts need a setup link.');
-      return;
-    }
-    for (const account of accounts) {
-      const issued = await issue(client, account, ttlHours);
-      if (!issued) continue;
-      console.log(`${account.email}\n  ${baseUrl}/set-password#token=${issued.token}\n  expires ${issued.expiresAt.toISOString()}`);
-    }
-    console.log('\nLinks are shown once and stored only as SHA-256 hashes. Re-running invalidates older links.');
-  } finally {
-    await client.end();
+  const api = getApi();
+  const members = await readTeamFile(path.join(root, 'db', 'seeds', 'team.csv'));
+  const emails = members.map((member) => member.email).filter((email) => !emailFilter || email === emailFilter);
+  if (emails.length === 0) {
+    console.log('No matching team members.');
+    return;
   }
+
+  for (const email of emails) {
+    const authUser = await findAuthUser(api, email);
+    const appUser = authUser ? await findAppUser(api, email) : null;
+    if (!authUser || !appUser) {
+      console.warn(`Skipped ${email}: run the team seed first.`);
+    } else if (appUser.is_blocked) {
+      console.warn(`Skipped ${email}: account is blocked.`);
+    } else if (authUser.last_sign_in_at) {
+      console.log(`Skipped ${email}: already signed in; use Forgot Password for resets.`);
+    } else {
+      console.log(`${email}\n  ${await recoveryLink(api, baseUrl, email)}`);
+    }
+  }
+  console.log('\nLinks are shown once and never stored by this script. Supabase controls their expiry; re-running issues a new link.');
 }
 
 main().catch((error) => {
