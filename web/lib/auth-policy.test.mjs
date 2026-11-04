@@ -65,6 +65,10 @@ test("redirects an approved signed-in user away from login and password setup", 
     getAuthenticatedRedirect("/set-password", approvedProfile, {}),
     { redirect: "/dashboard" }
   );
+  assert.deepEqual(
+    getAuthenticatedRedirect("/reset-password", approvedProfile, {}),
+    { allow: true }
+  );
 });
 
 test("denies blocked users and keeps pending users on registration", () => {
@@ -79,6 +83,22 @@ test("denies blocked users and keeps pending users on registration", () => {
   assert.deepEqual(
     getAuthenticatedRedirect(
       "/dashboard",
+      { ...approvedProfile, approval_status: "Pending" },
+      {}
+    ),
+    { redirect: "/register" }
+  );
+  assert.deepEqual(
+    getAuthenticatedRedirect(
+      "/reset-password",
+      { ...approvedProfile, is_blocked: true },
+      {}
+    ),
+    { redirect: "/login?error=blocked" }
+  );
+  assert.deepEqual(
+    getAuthenticatedRedirect(
+      "/reset-password",
       { ...approvedProfile, approval_status: "Pending" },
       {}
     ),

@@ -59,7 +59,9 @@ export async function proxy(request: NextRequest) {
       isLoginPage ||
       isPublicRegistrationPage ||
       pathname === "/set-password" ||
-      pathname === "/auth/callback"
+      pathname === "/reset-password" ||
+      pathname === "/auth/callback" ||
+      pathname === "/auth/recovery-callback"
     ) {
       return response;
     }
@@ -115,8 +117,10 @@ export const config = {
     "/login",
     "/register",
     "/auth/callback",
+    "/auth/recovery-callback",
     "/approval-pending",
     "/dashboard/:path*",
     "/set-password",
+    "/reset-password",
   ],
 };

@@ -17,23 +17,26 @@ const errorMessages: Record<string, string> = {
 const noticeMessages: Record<string, string> = {
   pending: "Password set. Your account is pending administrator approval.",
   password_set: "Password set successfully. Sign in with your new password.",
+  password_reset: "Password reset successfully. Sign in with your new password.",
 };
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const initialError = errorMessages[searchParams.get("error") ?? ""];
+  const initialNotice = noticeMessages[searchParams.get("notice") ?? ""];
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState(
-    errorMessages[searchParams.get("error") ?? ""] ??
-      noticeMessages[searchParams.get("notice") ?? ""] ??
-      ""
+  const [message, setMessage] = useState(initialError ?? initialNotice ?? "");
+  const [messageType, setMessageType] = useState<"error" | "success">(
+    initialError ? "error" : "success"
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    setMessageType("error");
     setIsSubmitting(true);
 
     try {
@@ -89,11 +92,19 @@ export function LoginForm() {
         disabled={isSubmitting}
       />
 
+      <p className="auth-alternate auth-forgot-password">
+        <Link href="/forgot-password">Forgot Password?</Link>
+      </p>
+
       <button className="pri full" type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Signing in..." : "Sign in"}
       </button>
 
-      <p className="msg" role="status" aria-live="polite">
+      <p
+        className={`msg${messageType === "success" ? " ok" : ""}`}
+        role={messageType === "success" ? "status" : "alert"}
+        aria-live={messageType === "success" ? "polite" : "assertive"}
+      >
         {message}
       </p>
       <p className="auth-alternate">
