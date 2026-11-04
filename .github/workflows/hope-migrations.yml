@@ -1,0 +1,76 @@
+name: HOPE migrations
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: hope_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hope_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_ENV: development
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: hope_test
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_SSL: false
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Prepare local Supabase Auth reference for CI
+        run: |
+          psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -c 'CREATE ROLE anon NOLOGIN' -c 'CREATE ROLE authenticated NOLOGIN' -c 'CREATE ROLE service_role NOLOGIN BYPASSRLS' -c 'GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role' -c 'CREATE SCHEMA auth' -c 'CREATE TABLE auth.users (id uuid PRIMARY KEY)' -c "INSERT INTO auth.users (id) VALUES ('00000000-0000-4000-8000-000000000001'), ('00000000-0000-4000-8000-000000000002'), ('00000000-0000-4000-8000-000000000003')"
+      - name: Verify Auth migration refuses existing profiles
+        run: |
+          guard_output="$(psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/test_supabase_auth_migration_guard.psql 2>&1)"
+          printf '%s\n' "$guard_output"
+          echo "$guard_output" | grep -F 'public.app_user must be empty'
+          echo "$guard_output" | grep -F 'public.profiles must be empty'
+      - name: Confirm fresh migration status
+        run: |
+          status="$(npm run db:status --silent)"
+          printf '%s\n' "$status"
+          echo "$status" | grep -Fx 'PENDING 001_hope_base_structure.sql'
+          echo "$status" | grep -Fx 'PENDING 002_hope_sample_data.sql'
+          echo "$status" | grep -Fx 'PENDING 003_user_management.sql'
+          echo "$status" | grep -Fx 'PENDING 004_supabase_auth_profiles.sql'
+          echo "$status" | grep -Fx 'PENDING 005_gate_rights_by_approval.sql'
+          echo "$status" | grep -Fx 'PENDING 006_lock_down_user_management_api_access.sql'
+      - name: Apply migrations
+        run: npm run db:migrate
+      - name: Confirm applied migration status
+        run: |
+          status="$(npm run db:status --silent)"
+          printf '%s\n' "$status"
+          echo "$status" | grep -Fx 'APPLIED 001_hope_base_structure.sql'
+          echo "$status" | grep -Fx 'APPLIED 002_hope_sample_data.sql'
+          echo "$status" | grep -Fx 'APPLIED 003_user_management.sql'
+          echo "$status" | grep -Fx 'APPLIED 004_supabase_auth_profiles.sql'
+          echo "$status" | grep -Fx 'APPLIED 005_gate_rights_by_approval.sql'
+          echo "$status" | grep -Fx 'APPLIED 006_lock_down_user_management_api_access.sql'
+      - name: Verify HOPE fixtures and constraints
+        run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/hope_verification.sql
+      - name: Verify user-management schema and permissions
+        run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql

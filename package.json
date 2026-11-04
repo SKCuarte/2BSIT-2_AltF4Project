@@ -1,0 +1,19 @@
+{
+  "name": "hope-inc-erp-database",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cross-platform PostgreSQL migration and seed tools for Hope, Inc. ERP",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "db:migrate": "node db/scripts/db.js migrate",
+    "db:status": "node db/scripts/db.js status",
+    "db:reset": "node db/scripts/db.js reset",
+    "db:seed": "node db/scripts/seed.js"
+  },
+  "dependencies": {
+    "dotenv": "16.4.7",
+    "pg": "8.13.1"
+  }
+}
