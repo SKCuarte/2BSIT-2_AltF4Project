@@ -131,25 +131,50 @@ async function ensureAuthUser(client, email) {
 }
 
 async function ensureAppUser(client, { firstName, lastName, email, roleName }) {
-  const existing = await client.query(
-    `SELECT account.id, account_role.name AS role_name
-     FROM public.app_user account
-     JOIN public.role account_role ON account_role.id = account.role_id
-     WHERE account.email = $1`,
-    [email],
+  const columns = await client.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'app_user'
+       AND column_name IN ('role', 'role_id')`,
   );
+  const hasRoleId = columns.rows.some((column) => column.column_name === 'role_id');
+  const hasRoleText = columns.rows.some((column) => column.column_name === 'role');
+  if (hasRoleId === hasRoleText) {
+    throw new Error('public.app_user must have exactly one of role_id or role columns.');
+  }
+
+  const existing = hasRoleId
+    ? await client.query(
+        `SELECT account.id, account_role.name AS role_name
+         FROM public.app_user account
+         JOIN public.role account_role ON account_role.id = account.role_id
+         WHERE account.email = $1`,
+        [email],
+      )
+    : await client.query(
+        'SELECT id, role AS role_name FROM public.app_user WHERE lower(email) = $1',
+        [email],
+      );
   if (existing.rowCount > 0) return { created: false, id: existing.rows[0].id, roleName: existing.rows[0].role_name };
 
   const authUserId = await ensureAuthUser(client, email);
-  const inserted = await client.query(
-    `INSERT INTO public.app_user (first_name, last_name, email, role_id, auth_user_id, approval_status)
-     SELECT $1, $2, $3, account_role.id, $4, 'Approved'
-     FROM public.role account_role
-     WHERE account_role.name = $5 AND account_role.status = 'Active'
-     ON CONFLICT (email) DO NOTHING
-     RETURNING id`,
-    [firstName, lastName, email, authUserId, roleName],
-  );
+  const inserted = hasRoleId
+    ? await client.query(
+        `INSERT INTO public.app_user (first_name, last_name, email, role_id, auth_user_id, approval_status)
+         SELECT $1, $2, $3, account_role.id, $4, 'Approved'
+         FROM public.role account_role
+         WHERE account_role.name = $5 AND account_role.status = 'Active'
+         ON CONFLICT (email) DO NOTHING
+         RETURNING id`,
+        [firstName, lastName, email, authUserId, roleName],
+      )
+    : await client.query(
+        `INSERT INTO public.app_user (first_name, last_name, email, role, auth_user_id, approval_status)
+         VALUES ($1, $2, $3, $4, $5, 'Approved')
+         ON CONFLICT (email) DO NOTHING
+         RETURNING id`,
+        [firstName, lastName, email, roleName, authUserId],
+      );
   if (inserted.rowCount === 0) throw new Error(`Could not create ${roleName} account; run npm run db:seed first.`);
   return { created: true, id: inserted.rows[0].id, roleName };
 }
