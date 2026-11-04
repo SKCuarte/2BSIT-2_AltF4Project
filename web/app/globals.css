@@ -62,6 +62,19 @@ a:focus-visible {
 }
 
 .registration-page {
+  color-scheme: dark;
+  --bg: #10191e;
+  --surface: #18252c;
+  --soft: #22333b;
+  --text: #edf4f6;
+  --muted: #afc0c9;
+  --border: #354750;
+  --accent: #287e8e;
+  --accent-dark: #206674;
+  --accent-light: #254852;
+  --on-accent: #ffffff;
+  --sun: #f2a541;
+  --danger: #c0392b;
   min-height: 100vh;
   display: flex;
   flex-direction: column;

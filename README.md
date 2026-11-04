@@ -38,6 +38,20 @@ For S1-DEV-03, the authentication routes use the schema from `db/migrations/003_
 
 The active database migrations remove `must_set_password` from `public.app_user`; they do not define `profiles.must_change_password`. The Dashboard includes an Admin-only user creation flow that creates a regular User with `approval_status = 'Pending'` and sets `app_metadata.must_change_password: true` using the server-side Supabase Auth Admin API. The temporary password is shown once to the authorized Admin. Manual public registration creates a Pending Auth user with a random password and uses a signed HTTP-only browser claim; no email verification is sent, so an Admin must verify the person and claimed Gmail independently before approval. After approval, the claim allows first-password setup, which clears the Auth metadata flag and redirects the user to Login. Never set the first-login flag from browser code or expose the service-role key.
 
+## Password recovery setup (S1-DEV-04)
+
+The Forgot Password page requests a Supabase Auth recovery email. Supabase Auth owns the expiring recovery link and password update; no password or reset token is stored in the application database. The callback verifies the recovery link, then the reset form requires that recovery session, an 8–128 character password, and a matching confirmation. The proxy continues to enforce account approval and blocked-user restrictions.
+
+In Supabase Dashboard, set the **Site URL** to the deployed app origin and add the recovery callback to **Authentication → URL Configuration → Redirect URLs**:
+
+- Local: `http://localhost:3000/auth/recovery-callback`
+- Preview: `https://<exact-preview-host>/auth/recovery-callback`
+- Deployed: `https://<your-app-domain>/auth/recovery-callback`
+
+Replace `<exact-preview-host>` with the hostname of the Preview site, then add the full callback URL under **Authentication → URL Configuration → Redirect URLs**. The app builds the callback from the current site origin, so local and Preview requests return to the same environment that requested the email.
+
+Keep the Supabase Auth email provider enabled. The password recovery email template must retain Supabase's confirmation link (the default `{{ .ConfirmationURL }}` works); Supabase sends the link to the callback above. Ensure recovery links have an expiration configured. Supabase's built-in SMTP is restricted to pre-authorized project-team email addresses and is limited to 2 emails per hour. Use a custom SMTP provider in **Authentication → SMTP Settings** for other recipients or regular testing/production delivery. Email branding and a shorter expiry are optional recommendations.
+
 ---
 
 ## 👥 Team Roles & Responsibilities
