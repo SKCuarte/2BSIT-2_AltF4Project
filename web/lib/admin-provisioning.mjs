@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { MUST_CHANGE_PASSWORD_KEY } from "./auth-policy.mjs";
+import { findActiveRoleId, findActiveRoleName } from "./role-lookup.mjs";
 
 const GENERIC_PROVISIONING_ERROR =
   "Unable to create this account. Verify the details or try again later.";
@@ -11,7 +12,7 @@ export function generateTemporaryPassword() {
 export async function getAdminProvisioningAccess(admin, authUserId) {
   const { data: account, error: accountError } = await admin
     .from("app_user")
-    .select("role, is_blocked, approval_status")
+    .select("role_id, is_blocked, approval_status")
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 
@@ -22,12 +23,26 @@ export async function getAdminProvisioningAccess(admin, authUserId) {
     return { status: "unavailable" };
   }
 
-  if (
-    !account ||
-    account.is_blocked ||
-    account.approval_status !== "Approved" ||
-    !["Admin", "Superadmin"].includes(account.role)
-  ) {
+  if (!account || account.is_blocked || account.approval_status !== "Approved") {
+    return { status: "forbidden" };
+  }
+
+  let roleResult;
+  try {
+    roleResult = await findActiveRoleName(admin, account.role_id);
+  } catch (error) {
+    console.error("Admin provisioning role lookup failed:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+    return { status: "unavailable" };
+  }
+  if (roleResult.error) {
+    console.error("Admin provisioning role lookup failed:", {
+      code: roleResult.error.code ?? "role_lookup_failed",
+    });
+    return { status: "unavailable" };
+  }
+  if (!["Admin", "Superadmin"].includes(roleResult.roleName)) {
     return { status: "forbidden" };
   }
 
@@ -71,6 +86,30 @@ export function validateProvisioningInput(value) {
 }
 
 export async function provisionRegularUser(admin, input) {
+  let roleResult;
+  try {
+    roleResult = await findActiveRoleId(admin, "User");
+  } catch (error) {
+    console.error("Admin provisioning User role lookup failed:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+    return {
+      ok: false,
+      status: 503,
+      error: GENERIC_PROVISIONING_ERROR,
+    };
+  }
+  if (roleResult.error || roleResult.roleId === null) {
+    console.error("Admin provisioning User role lookup failed:", {
+      code: roleResult.error?.code ?? "active_user_role_missing",
+    });
+    return {
+      ok: false,
+      status: 503,
+      error: GENERIC_PROVISIONING_ERROR,
+    };
+  }
+
   const temporaryPassword = generateTemporaryPassword();
   const { data: authData, error: authError } =
     await admin.auth.admin.createUser({
@@ -100,7 +139,7 @@ export async function provisionRegularUser(admin, input) {
     first_name: input.firstName,
     last_name: input.lastName,
     email: input.email,
-    role: "User",
+    role_id: roleResult.roleId,
     is_blocked: false,
     approval_status: "Pending",
   });

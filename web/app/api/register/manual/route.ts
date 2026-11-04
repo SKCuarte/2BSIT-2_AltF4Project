@@ -6,6 +6,7 @@ import {
   REGISTRATION_CLAIM_COOKIE,
   REGISTRATION_CLAIM_MAX_AGE,
 } from "@/lib/registration-claim.mjs";
+import { findActiveRoleId } from "@/lib/role-lookup.mjs";
 
 function parseRegistration(value: unknown) {
   if (
@@ -76,6 +77,7 @@ export async function POST(request: Request) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const result = await createPendingManualRegistration(input, {
+    findUserRoleId: () => findActiveRoleId(admin, "User"),
     findProfileByEmail: async (email) => {
       const { data, error } = await admin
         .from("app_user")

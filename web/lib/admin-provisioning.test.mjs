@@ -74,21 +74,28 @@ test("only approved, unblocked Admins and Superadmins may provision", async () =
   const admin = createQueryMock([
     {
       data: {
-        role: "Admin",
+        role_id: 2,
         is_blocked: false,
         approval_status: "Approved",
       },
       error: null,
     },
+    { data: { name: "Admin" }, error: null },
   ]);
   assert.deepEqual(await getAdminProvisioningAccess(admin, "auth-1"), {
     status: "allowed",
   });
+  assert.equal(admin.calls[0].columns, "role_id, is_blocked, approval_status");
+  assert.equal(admin.calls[1].table, "role");
+  assert.deepEqual(admin.calls[1].filters, [
+    ["id", 2],
+    ["status", "Active"],
+  ]);
 
   const pending = createQueryMock([
     {
       data: {
-        role: "Admin",
+        role_id: 2,
         is_blocked: false,
         approval_status: "Pending",
       },
@@ -102,7 +109,10 @@ test("only approved, unblocked Admins and Superadmins may provision", async () =
 });
 
 test("creates a Pending regular user with a first-login password marker", async () => {
-  const admin = createQueryMock([{ data: null, error: null }]);
+  const admin = createQueryMock([
+    { data: { id: 3 }, error: null },
+    { data: null, error: null },
+  ]);
   admin.auth = {
     admin: {
       async createUser(user) {
@@ -128,15 +138,22 @@ test("creates a Pending regular user with a first-login password marker", async 
     true
   );
   assert.equal(admin.createdUser.password, result.temporaryPassword);
-  assert.equal(admin.calls[0].insert.auth_user_id, "new-auth-user");
-  assert.equal(admin.calls[0].insert.role, "User");
-  assert.equal(admin.calls[0].insert.approval_status, "Pending");
-  assert.equal("status" in admin.calls[0].insert, false);
-  assert.equal("role_id" in admin.calls[0].insert, false);
+  assert.equal(admin.calls[0].table, "role");
+  assert.equal(admin.calls[0].columns, "id");
+  assert.deepEqual(admin.calls[0].filters, [
+    ["name", "User"],
+    ["status", "Active"],
+  ]);
+  assert.equal(admin.calls[1].table, "app_user");
+  assert.equal(admin.calls[1].insert.role_id, 3);
+  assert.equal("role" in admin.calls[1].insert, false);
+  assert.equal(admin.calls[1].insert.approval_status, "Pending");
+  assert.equal("status" in admin.calls[1].insert, false);
+  assert.equal(admin.calls[1].insert.auth_user_id, "new-auth-user");
 });
 
 test("does not delete an existing Auth account when creation is rejected", async () => {
-  const admin = createQueryMock([]);
+  const admin = createQueryMock([{ data: { id: 3 }, error: null }]);
   admin.auth = {
     admin: {
       async createUser() {
@@ -159,7 +176,7 @@ test("does not delete an existing Auth account when creation is rejected", async
 
     assert.equal(result.ok, false);
     assert.equal(result.status, 400);
-    assert.equal(admin.calls.length, 0);
+    assert.equal(admin.calls.length, 1);
   } finally {
     console.error = originalError;
   }
@@ -167,6 +184,7 @@ test("does not delete an existing Auth account when creation is rejected", async
 
 test("removes the newly created Auth user if profile insertion fails", async () => {
   const admin = createQueryMock([
+    { data: { id: 3 }, error: null },
     { data: null, error: { code: "insert_failed" } },
   ]);
   const deletedIds = [];
@@ -202,6 +220,7 @@ test("removes the newly created Auth user if profile insertion fails", async () 
 
 test("reports administrator intervention if profile save and Auth cleanup both fail", async () => {
   const admin = createQueryMock([
+    { data: { id: 3 }, error: null },
     { data: null, error: { code: "insert_failed" } },
   ]);
   admin.auth = {
@@ -231,6 +250,31 @@ test("reports administrator intervention if profile save and Auth cleanup both f
     assert.equal(logged.length, 2);
     assert.equal(JSON.stringify(logged).includes("ana@example.com"), false);
     assert.equal(JSON.stringify(logged).includes("password"), false);
+  } finally {
+    console.error = originalError;
+  }
+});
+
+test("does not create an account when the active User role cannot be resolved", async () => {
+  const admin = createQueryMock([{ data: null, error: null }]);
+  admin.auth = {
+    admin: {
+      async createUser() {
+        assert.fail("must not create an Auth user without the User role");
+      },
+    },
+  };
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    const result = await provisionRegularUser(admin, {
+      firstName: "Ana",
+      lastName: "User",
+      email: "ana@example.com",
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 503);
+    assert.equal(admin.calls.length, 1);
   } finally {
     console.error = originalError;
   }

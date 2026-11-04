@@ -7,6 +7,7 @@ import { MUST_CHANGE_PASSWORD_KEY } from "./auth-policy.mjs";
  * @param {{ firstName: string; lastName: string; email: string }} input
  * @param {{
  *   findProfileByEmail: (email: string) => Promise<{ profile?: object | null; error?: object | null }>;
+ *   findUserRoleId: () => Promise<{ roleId?: number | string | null; error?: object | null }>;
  *   createAuthUser: (user: object) => Promise<{ user?: object | null; error?: object | null }>;
  *   insertProfile: (profile: object) => Promise<{ profile?: object | null; error?: object | null }>;
  *   deleteAuthUser: (id: string) => Promise<{ error?: object | null }>;
@@ -14,6 +15,20 @@ import { MUST_CHANGE_PASSWORD_KEY } from "./auth-policy.mjs";
  * }} dependencies
  */
 export async function createPendingManualRegistration(input, dependencies) {
+  let roleResult;
+  try {
+    roleResult = await dependencies.findUserRoleId();
+  } catch (error) {
+    return failure(dependencies, "Registration User role lookup failed", error);
+  }
+  if (roleResult.error || roleResult.roleId === null || roleResult.roleId === undefined) {
+    return failure(
+      dependencies,
+      "Registration User role lookup failed",
+      roleResult.error ?? new Error("Active User role was not found.")
+    );
+  }
+
   let existingProfile;
   try {
     existingProfile = await dependencies.findProfileByEmail(input.email);
@@ -75,7 +90,7 @@ export async function createPendingManualRegistration(input, dependencies) {
       first_name: input.firstName,
       last_name: input.lastName,
       email: input.email,
-      role: "User",
+      role_id: roleResult.roleId,
       approval_status: "Pending",
       is_blocked: false,
     });

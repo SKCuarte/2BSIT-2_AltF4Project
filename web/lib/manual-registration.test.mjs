@@ -50,6 +50,7 @@ function createHarness(options = {}) {
 test("creates a pending account without an anonymous session", async () => {
   const calls = [];
   const result = await createPendingManualRegistration(input, {
+    findUserRoleId: async () => ({ roleId: 7 }),
     findProfileByEmail: async () => ({ profile: null }),
     createAuthUser: async (createdUser) => {
       calls.push(["create", createdUser]);
@@ -79,7 +80,7 @@ test("creates a pending account without an anonymous session", async () => {
     first_name: "Ada",
     last_name: "Lovelace",
     email: "ada@example.com",
-    role: "User",
+    role_id: 7,
     approval_status: "Pending",
     is_blocked: false,
   });
@@ -88,6 +89,7 @@ test("creates a pending account without an anonymous session", async () => {
 test("cleans up the Auth account if the pending profile cannot be saved", async () => {
   const deleted = [];
   const result = await createPendingManualRegistration(input, {
+    findUserRoleId: async () => ({ roleId: 7 }),
     findProfileByEmail: async () => ({ profile: null }),
     createAuthUser: async () => ({ user: { id: "created-auth-user" } }),
     insertProfile: async () => ({
@@ -101,6 +103,23 @@ test("cleans up the Auth account if the pending profile cannot be saved", async 
 
   assert.equal(result.status, 503);
   assert.deepEqual(deleted, ["created-auth-user"]);
+});
+
+test("does not create a pending account when the active User role is missing", async () => {
+  let authUserCreated = false;
+  const result = await createPendingManualRegistration(input, {
+    findUserRoleId: async () => ({ roleId: null }),
+    findProfileByEmail: async () => assert.fail("role must be resolved first"),
+    createAuthUser: async () => {
+      authUserCreated = true;
+      return { user: { id: "created-auth-user" } };
+    },
+    insertProfile: async () => assert.fail("must not insert without a role"),
+    deleteAuthUser: async () => assert.fail("no Auth user was created"),
+  });
+
+  assert.equal(result.status, 503);
+  assert.equal(authUserCreated, false);
 });
 
 test("creates a Pending profile and marks password setup for a manual request", async () => {
