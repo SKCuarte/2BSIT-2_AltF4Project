@@ -30,14 +30,15 @@
 ## 🚀 3. PR Velocity & Target Minimum Progress
 
 ### Counting Basis & Objective Status Thresholds
-* **Counting Basis**: Progress metrics strictly count **merged PRs** against planned Sprint 1 targets.
-* **On Track (🟢)**: Member has completed **≥ 40%** of their target minimum PRs by mid-sprint with no active blockers.
-* **Needs Push (🟡)**: Member has completed **< 40%** of their target minimum PRs or is waiting on unresolved blocking dependencies.
+* **Counting Basis**: This checkpoint counts only **merged, role-related PRs** authored by the member. Draft or unmerged PRs, review comments, and unrelated PRs do not count. The UI/UX count includes PRs **#49, #56, #57, and #64**, which contain interface, wireframe, or design-system work.
+* **Target Basis**: The target numbers match the role minimums in the working agreement published in PR **#65** (Scrum Master 5, DB Admin 6, Developer 8, Tester 6, UI/UX 5). The agreement describes broader PR/task contributions; this table uses those numbers as a **PR-delivery benchmark only**. It does not measure non-PR tasks, such as a Tester’s inline reviews or sign-offs.
+* **On Track (🟢)**: Member has completed **≥ 40%** of their target PR benchmark by mid-sprint and has no active blockers.
+* **Needs Push (🟡)**: Member has completed **< 40%** of their target PR benchmark **or has an active blocker**, regardless of progress percentage.
 
 | Role | Team Member | Current Completed PRs | Target Minimum PRs | Progress % | Status |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | **Scrum Master** | Shanelle Kyan Cuarte | 3 | 5 | 60% | On Track 🟢 |
-| **DB Admin** | John Elijah Pangilinan | 3 | 6 | 50% | On Track 🟢 |
+| **DB Admin** | John Elijah Pangilinan | 3 | 6 | 50% | Needs Push 🟡 (active blocker) |
 | **Developer** | Shan Michael De Leon | 1 | 8 | 12.5% | Needs Push 🟡 |
 | **Tester** | Joshua Morning Lazaro | 1 | 6 | 16.7% | Needs Push 🟡 |
-| **UI/UX Designer** | Marl Gem Barozo | 2 | 5 | 40% | On Track 🟢 |
+| **UI/UX Designer** | Marl Gem Barozo | 4 | 5 | 80% | Needs Push 🟡 (active blocker) |
