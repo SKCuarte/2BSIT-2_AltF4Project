@@ -91,17 +91,17 @@ Expected: psql reports `CREATE ROLE`, `CREATE DATABASE`, and `GRANT`; `\password
    ```text
    npm run db:status
    ```
-   Expected on a fresh checkout before migration: migrations `001` through `006` are `PENDING`.
+   Expected on a fresh checkout before migration: migrations `001` through `007` are `PENDING`.
 3. Apply migrations:
    ```text
    npm run db:migrate
    ```
-   Expected: all six migrations are reported as applied and recorded in `public.schema_migrations`, in filename order.
+   Expected: all seven migrations are reported as applied and recorded in `public.schema_migrations`, in filename order.
 4. Confirm migration status:
    ```text
    npm run db:status
    ```
-   Expected: all six migrations are `APPLIED`, including `004_supabase_auth_profiles.sql`, `005_gate_rights_by_approval.sql`, and `006_lock_down_user_management_api_access.sql`.
+   Expected: all seven migrations are `APPLIED`, including `004_supabase_auth_profiles.sql`, `005_gate_rights_by_approval.sql`, `006_lock_down_user_management_api_access.sql`, and `007_password_reset_token.sql`.
 5. Run repeatable seed scripts:
    ```text
    npm run db:seed
@@ -152,6 +152,8 @@ GRANT REFERENCES ON TABLE auth.users TO hope_app;
 Then apply migrations and run `db/verification/user_management_verification.sql` as documented below. Migration 004 requires both `app_user` and any existing `profiles` table to be empty.
 
 Task 3 migration 006 enables RLS and revokes direct privileges on `app_user` and `user_permission` from `PUBLIC`, `anon`, and `authenticated`. Only the server-side `service_role` keeps direct table/identity-sequence access; never expose its secret key to browser code.
+
+Task 4 migration 007 adds the protected `password_reset_token` table for password setup and reset. Token expiry values belong in application configuration: 24 hours for `set_password` and 30 minutes for `reset_password`. See `db/migrations/README.md` for the issuance transaction, validation query, cleanup statement, and raw-token handling requirements. Run `db/verification/password_reset_token_verification.sql` only against the disposable local/test database; it rolls its fixtures back and must not run against hosted Auth or Production.
 
 ## Disposable Runner Smoke Test
 
