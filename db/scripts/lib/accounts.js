@@ -50,6 +50,9 @@ function assertDevOnly(action) {
 
 async function connect() {
   const connectionString = process.env.DATABASE_URL;
+  const databaseHost = connectionString
+    ? new URL(connectionString).hostname.toLowerCase()
+    : required('DB_HOST').toLowerCase();
   const clientConfig = connectionString
     ? { connectionString }
     : {
@@ -60,7 +63,7 @@ async function connect() {
         password: required('DB_PASSWORD'),
       };
 
-  if (process.env.DB_SSL === 'true' || process.env.DATABASE_SSL === 'true') {
+  if (!localHosts.has(databaseHost) || process.env.DB_SSL === 'true' || process.env.DATABASE_SSL === 'true') {
     clientConfig.ssl = { rejectUnauthorized: true };
   }
   clientConfig.connectionTimeoutMillis = 10000;
