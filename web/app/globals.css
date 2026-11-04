@@ -112,6 +112,38 @@ a:focus-visible {
   box-shadow: 0 20px 60px rgba(16, 34, 46, 0.1);
 }
 
+.dashboard-card {
+  width: min(100%, 560px);
+}
+
+.dashboard-card h2 {
+  margin: 24px 0 8px;
+  font-size: 1.25rem;
+}
+
+.admin-created-account {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--soft);
+}
+
+.admin-created-account p {
+  margin: 0;
+}
+
+.admin-created-account code {
+  overflow-wrap: anywhere;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 1rem;
+}
+
 .registration-card h1 {
   margin: 0 0 8px;
   font-size: clamp(1.7rem, 5vw, 2rem);
@@ -136,6 +168,53 @@ a:focus-visible {
 .registration-card form {
   display: flex;
   flex-direction: column;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-form label {
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.auth-form input {
+  width: 100%;
+  min-height: 46px;
+  margin-bottom: 17px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.auth-form input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--accent-light) 75%, transparent);
+  outline: none;
+}
+
+.auth-form input:disabled {
+  opacity: 0.7;
+}
+
+.auth-alternate {
+  margin: 14px 0 0;
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.auth-alternate a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
 }
 
 .registration-card label {
