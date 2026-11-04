@@ -65,6 +65,9 @@ async function connect() {
 
   if (!localHosts.has(databaseHost) || process.env.DB_SSL === 'true' || process.env.DATABASE_SSL === 'true') {
     clientConfig.ssl = { rejectUnauthorized: true };
+    if (process.env.DATABASE_SSL_ROOT_CERT) {
+      clientConfig.ssl.ca = await fs.readFile(path.resolve(root, process.env.DATABASE_SSL_ROOT_CERT), 'utf8');
+    }
   }
   clientConfig.connectionTimeoutMillis = 10000;
 
