@@ -43,9 +43,9 @@ async function findAppUser(api, email) {
 }
 
 async function insertAppUser(api, member, authUserId) {
-  const response = await fetch(`${api.base}/rest/v1/app_user?on_conflict=email`, {
+  const response = await fetch(`${api.base}/rest/v1/app_user`, {
     method: 'POST',
-    headers: { ...api.headers, Prefer: 'resolution=ignore-duplicates,return=representation' },
+    headers: { ...api.headers, Prefer: 'return=representation' },
     body: JSON.stringify({
       first_name: member.firstName,
       last_name: member.lastName,
@@ -55,7 +55,11 @@ async function insertAppUser(api, member, authUserId) {
       approval_status: 'Approved',
     }),
   });
-  if (!response.ok) throw new Error(`app_user insert failed (HTTP ${response.status}).`);
+  if (!response.ok) {
+    const error = new Error(`app_user insert failed (HTTP ${response.status}).`);
+    error.status = response.status;
+    throw error;
+  }
   return response.json();
 }
 
@@ -81,16 +85,19 @@ async function seedMember(api, member) {
   const authUser = await ensureAuthUser(api, member.email);
   try {
     const inserted = await insertAppUser(api, member, authUser.id);
-    if (!inserted.length) {
-      const current = await findAppUser(api, member.email);
-      if (!current.length) throw new Error('app_user insert returned no row.');
-      if (current[0].role !== 'Superadmin') {
-        console.warn(`Skipped ${member.email}: concurrent account has a different role; role left unchanged.`);
-        return;
-      }
-    }
+    if (!inserted.length) throw new Error('app_user insert returned no row.');
     console.log(`Created Superadmin ${member.email} with no password.`);
   } catch (error) {
+    const current = error.status === 409 ? await findAppUser(api, member.email) : [];
+    if (current.length) {
+      if (authUser.created) await removeAuthUser(api, authUser.id).catch(() => false);
+      if (current[0].role !== 'Superadmin') {
+        console.warn(`Skipped ${member.email}: concurrent account has a different role; role left unchanged.`);
+      } else {
+        console.log(`Superadmin ${member.email} already exists.`);
+      }
+      return;
+    }
     if (authUser.created) await removeAuthUser(api, authUser.id).catch(() => false);
     throw error;
   }
