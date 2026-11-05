@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
+import { SuperadminApprovalPanel } from "@/components/superadmin-approval-panel";
 import { UserManagement } from "@/components/user-management";
 import { getAdminProvisioningAccess } from "@/lib/admin-provisioning.mjs";
 import { createSupabaseAdminClient, getSupabaseServerConfig } from "@/lib/supabase-admin";
@@ -93,6 +94,7 @@ export default async function UserManagementPage() {
           <span className="um-role-badge">{access.roleName}</span>
         </header>
         <div className="um-content">
+          {access.roleName === "Superadmin" && <SuperadminApprovalPanel />}
           <UserManagement actorRole={access.roleName} />
         </div>
       </div>
