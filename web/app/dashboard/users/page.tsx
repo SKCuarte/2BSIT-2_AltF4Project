@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { UserManagement } from "@/components/user-management";
 import { getAdminProvisioningAccess } from "@/lib/admin-provisioning.mjs";
 import { createSupabaseAdminClient, getSupabaseServerConfig } from "@/lib/supabase-admin";
@@ -9,6 +10,8 @@ import { createSupabaseAdminClient, getSupabaseServerConfig } from "@/lib/supaba
 export const instant = false;
 
 export default async function UserManagementPage() {
+  await connection();
+
   const config = getSupabaseServerConfig();
   if (!config) {
     return (

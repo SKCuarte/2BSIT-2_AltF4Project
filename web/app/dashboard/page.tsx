@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { connection } from "next/server";
 import { LogoutButton } from "@/components/logout-button";
 import { UserManagement } from "@/components/user-management";
 import { getAdminProvisioningAccess } from "@/lib/admin-provisioning.mjs";
@@ -9,6 +10,8 @@ import { createSupabaseAdminClient, getSupabaseServerConfig } from "@/lib/supaba
 export const instant = false;
 
 export default async function DashboardPage() {
+  await connection();
+
   let canCreateUsers = false;
   let adminCheckUnavailable = false;
   let actorRole: "User" | "Admin" | "Superadmin" | "Account" = "Account";
