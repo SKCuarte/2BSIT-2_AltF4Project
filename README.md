@@ -62,7 +62,7 @@ The page and each API operation verify the signed-in administrator and target ro
 
 Only an approved, active Superadmin can review pending User registrations, approve or reject them, and promote or demote approved, active, unblocked accounts between User and Admin. Approval sets `approval_status` to `Approved` and account `status` to `Active`; rejection sets `approval_status` to `Rejected`. These values follow the existing database constraints. Server routes re-verify the caller's role for every operation, and Superadmin accounts cannot be changed through User Management.
 
-The DB Admin should add a database trigger that prevents deleting or making the last active, unblocked, approved Superadmin ineligible by changing its role, `status`, `is_blocked`, or `approval_status`. Serialize those checks in the database so concurrent changes cannot remove the final Superadmin. RLS is not sufficient for this guard because trusted server routes use `service_role`, which bypasses RLS.
+Migration `007_protect_last_superadmin.sql` adds database triggers that prevent deleting, truncating, or making the last active, unblocked, approved Superadmin ineligible by changing its role, `status`, `is_blocked`, or `approval_status` (or by deactivating/renaming the Superadmin role). Checks are serialized with an advisory transaction lock and also apply to `service_role`, which bypasses RLS. The guard only reads `role_id`; a legacy text `role` column, if present in a database, must be kept in sync separately. Superusers can still bypass triggers with `session_replication_role`.
 
 ---
 

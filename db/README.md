@@ -101,7 +101,7 @@ Expected: psql reports `CREATE ROLE`, `CREATE DATABASE`, and `GRANT`; `\password
    ```text
    npm run db:status
    ```
-   Expected: all six migrations are `APPLIED`, including `004_supabase_auth_profiles.sql`, `005_gate_rights_by_approval.sql`, and `006_lock_down_user_management_api_access.sql`.
+   Expected: all seven migrations are `APPLIED`, including `004_supabase_auth_profiles.sql`, `005_gate_rights_by_approval.sql`, `006_lock_down_user_management_api_access.sql`, and `007_protect_last_superadmin.sql`.
 5. Run repeatable seed scripts:
    ```text
    npm run db:seed

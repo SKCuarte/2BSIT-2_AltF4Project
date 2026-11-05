@@ -7,3 +7,5 @@ Never change or remove an applied migration. Add a new numbered migration instea
 `004_supabase_auth_profiles.sql` requires `public.app_user` and any existing `public.profiles` table to be empty before it adds the required Auth UUID FK and removes legacy password columns. It aborts before changing the schema when either table contains rows. Reconcile existing profiles with Supabase Auth through a separately reviewed backfill plan; never copy password hashes into `auth.users` or bypass the guard. Registration APIs should write to `app_user` by `auth_user_id`; delete an unlinked Auth account if its profile insert fails.
 
 `006_lock_down_user_management_api_access.sql` enables RLS on `app_user` and `user_permission`, revokes their direct privileges from `PUBLIC`, `anon`, and `authenticated`, and grants the server-only `service_role` the needed table/sequence access. Do not expose the service-role secret to clients.
+
+`007_protect_last_superadmin.sql` adds triggers on `app_user` and `role` that reject any change leaving no active, unblocked, approved Superadmin (including `service_role` writes).
