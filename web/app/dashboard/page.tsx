@@ -3,17 +3,32 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { connection } from "next/server";
 import { LogoutButton } from "@/components/logout-button";
-import { UserManagement } from "@/components/user-management";
 import { getAdminProvisioningAccess } from "@/lib/admin-provisioning.mjs";
 import { createSupabaseAdminClient, getSupabaseServerConfig } from "@/lib/supabase-admin";
 
 export const instant = false;
+
+const MODULE_TILES = [
+  { code: "CUSTOMER", title: "Customer", blurb: "Customer records and account activity" },
+  { code: "PRODUCT", title: "Product", blurb: "Catalog, inventory and pricing" },
+  { code: "HR", title: "Human Resources", blurb: "Jobs, departments, employees and job history" },
+  { code: "SALES", title: "Sales", blurb: "Sales records and transaction details" },
+  { code: "REPORTS", title: "Reports", blurb: "Operational summaries and performance reports" },
+];
+
+const SAMPLE_STATS = [
+  { label: "Total Customers", value: "4", note: "1 inactive" },
+  { label: "Products", value: "386", note: "5 new this week" },
+  { label: "Open Orders", value: "94", note: "8% vs last week" },
+  { label: "Revenue (MTD)", value: "$84.2k", note: "18% vs last month" },
+];
 
 export default async function DashboardPage() {
   await connection();
 
   let canCreateUsers = false;
   let adminCheckUnavailable = false;
+  let grantedModules = new Set<string>();
   let actorRole: "User" | "Admin" | "Superadmin" | "Account" = "Account";
   const config = getSupabaseServerConfig();
 
@@ -42,6 +57,23 @@ export default async function DashboardPage() {
       canCreateUsers = access.status === "allowed";
       if (access.roleName) actorRole = access.roleName;
       adminCheckUnavailable = access.status === "unavailable";
+
+      const admin = createSupabaseAdminClient();
+      const { data: account } = await admin
+        .from("app_user")
+        .select("id")
+        .eq("auth_user_id", data.user.id)
+        .maybeSingle();
+      if (account) {
+        const { data: rights } = await admin
+          .from("v_user_effective_rights")
+          .select("module_code")
+          .eq("user_id", account.id)
+          .eq("granted", true);
+        grantedModules = new Set(
+          (rights ?? []).map((row: { module_code: string }) => row.module_code)
+        );
+      }
     }
   } else {
     console.error("Dashboard Admin check configuration is incomplete.");
@@ -106,10 +138,48 @@ export default async function DashboardPage() {
               contact an authorized Superadmin.
             </p>
           )}
-          {canCreateUsers &&
-            (actorRole === "Admin" || actorRole === "Superadmin") && (
-              <UserManagement actorRole={actorRole} />
-          )}
+          <section aria-label="Key figures" className="dash-stats">
+            {SAMPLE_STATS.map((stat) => (
+              <div className="dash-stat" key={stat.label}>
+                <p>{stat.label}</p>
+                <strong>{stat.value}</strong>
+                <small>{stat.note}</small>
+              </div>
+            ))}
+          </section>
+          <p className="um-access-note">These are sample figures.</p>
+          <section aria-labelledby="dash-modules-title" className="dash-modules">
+            <div className="dash-modules-heading">
+              <h3 id="dash-modules-title">Modules</h3>
+              <span>Available with your current rights</span>
+            </div>
+            <div className="dash-tiles">
+              {canCreateUsers && (
+                <Link className="dash-tile" href="/dashboard/users">
+                  <span>
+                    <strong>User Management</strong>
+                    <small>Accounts, roles, approvals, and access</small>
+                  </span>
+                  <span aria-hidden="true">&rarr;</span>
+                </Link>
+              )}
+              {MODULE_TILES.filter((tile) => grantedModules.has(tile.code)).map(
+                (tile) => (
+                  <div className="dash-tile" key={tile.code}>
+                    <span>
+                      <strong>{tile.title}</strong>
+                      <small>{tile.blurb}</small>
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
+            {!canCreateUsers && grantedModules.size === 0 && (
+              <p className="um-access-note">
+                No modules are assigned to your account yet. Ask an administrator for access.
+              </p>
+            )}
+          </section>
           <div className="um-dashboard-logout">
             <LogoutButton />
           </div>
