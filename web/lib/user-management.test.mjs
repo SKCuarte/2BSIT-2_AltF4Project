@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   canManageRole,
+  decideUserApproval,
   getManagedAccountStatus,
   getVisibleManagedRoles,
+  listPendingUserApprovals,
   listManagedUsers,
   updateManagedUser,
   validateUserChanges,
@@ -167,6 +169,11 @@ test("edit accepts only bounded names or an explicit block toggle", () => {
     null
   );
   assert.equal(validateUserChanges({ isBlocked: "true" }), null);
+  assert.deepEqual(validateUserChanges({ role: "Admin" }), {
+    type: "role",
+    role: "Admin",
+  });
+  assert.equal(validateUserChanges({ role: "Superadmin" }), null);
 });
 
 test("Admin list query is scoped to the User role before returning accounts", async () => {
@@ -269,6 +276,192 @@ test("Superadmin list query includes Admin and User, but filters out Superadmin"
   ]);
 });
 
+test("pending approvals list includes only pending User accounts", async () => {
+  const admin = createAdminMock([
+    ...canonicalSchemaResponses(),
+    { data: { id: 3 }, error: null },
+    {
+      data: [
+        {
+          id: 789,
+          first_name: "Ana",
+          last_name: "User",
+          email: "ana@example.com",
+          role_id: 3,
+          approval_status: "Pending",
+          is_blocked: false,
+          status: "Active",
+        },
+      ],
+      error: null,
+    },
+  ]);
+
+  const result = await listPendingUserApprovals(admin);
+
+  assert.deepEqual(result, {
+    status: "ok",
+    approvals: [
+      {
+        id: "789",
+        firstName: "Ana",
+        lastName: "User",
+        email: "ana@example.com",
+        isBlocked: false,
+        role: "User",
+      },
+    ],
+  });
+  assert.deepEqual(admin.calls[5].filters, [
+    ["eq", "role_id", 3],
+    ["eq", "approval_status", "Pending"],
+  ]);
+});
+
+test("approving a pending User sets approval and account status to active", async () => {
+  const admin = createAdminMock([
+    ...canonicalSchemaResponses(),
+    { data: { id: 3 }, error: null },
+    { data: { id: 789, is_blocked: false }, error: null },
+  ]);
+
+  const result = await decideUserApproval(admin, "789", "approve");
+
+  assert.deepEqual(result, {
+    status: "ok",
+    approvalStatus: "Approved",
+    wasBlocked: false,
+  });
+  const updateCall = admin.calls.find((call) => call.update);
+  assert.deepEqual(updateCall.update, {
+    approval_status: "Approved",
+    status: "Active",
+  });
+  assert.deepEqual(updateCall.filters, [
+    ["eq", "id", "789"],
+    ["eq", "role_id", 3],
+    ["eq", "approval_status", "Pending"],
+  ]);
+});
+
+test("rejecting a pending User does not make the account active", async () => {
+  const admin = createAdminMock([
+    ...canonicalSchemaResponses(),
+    { data: { id: 3 }, error: null },
+    { data: { id: 789, is_blocked: false }, error: null },
+  ]);
+
+  const result = await decideUserApproval(admin, "789", "reject");
+
+  assert.deepEqual(result, {
+    status: "ok",
+    approvalStatus: "Rejected",
+    wasBlocked: false,
+  });
+  const updateCall = admin.calls.find((call) => call.update);
+  assert.deepEqual(updateCall.update, { approval_status: "Rejected" });
+});
+
+test("Superadmin can promote an active approved User to Admin", async () => {
+  const admin = createAdminMock([
+    ...canonicalSchemaResponses(),
+    {
+      data: {
+        id: 789,
+        role_id: 3,
+        auth_user_id: "auth-user",
+        approval_status: "Approved",
+        is_blocked: false,
+        status: "Active",
+      },
+      error: null,
+    },
+    { data: { name: "User" }, error: null },
+    { data: { id: 2 }, error: null },
+    { data: { id: 789 }, error: null },
+  ]);
+
+  const result = await updateManagedUser(admin, "Superadmin", "789", {
+    role: "Admin",
+  });
+
+  assert.deepEqual(result, { status: "ok" });
+  const updateCall = admin.calls.find((call) => call.update);
+  assert.deepEqual(updateCall.update, { role_id: 2 });
+  assert.deepEqual(updateCall.filters, [
+    ["eq", "id", "789"],
+    ["eq", "role_id", 3],
+    ["eq", "approval_status", "Approved"],
+    ["eq", "is_blocked", false],
+    ["eq", "status", "Active"],
+  ]);
+});
+
+test("Superadmin can demote an active approved Admin to User", async () => {
+  const admin = createAdminMock([
+    ...canonicalSchemaResponses(),
+    {
+      data: {
+        id: 789,
+        role_id: 2,
+        auth_user_id: "auth-admin",
+        approval_status: "Approved",
+        is_blocked: false,
+        status: "Active",
+      },
+      error: null,
+    },
+    { data: { name: "Admin" }, error: null },
+    { data: { id: 3 }, error: null },
+    { data: { id: 789 }, error: null },
+  ]);
+
+  const result = await updateManagedUser(admin, "Superadmin", "789", {
+    role: "User",
+  });
+
+  assert.deepEqual(result, { status: "ok" });
+  assert.deepEqual(
+    admin.calls.find((call) => call.update).update,
+    { role_id: 3 }
+  );
+});
+
+test("Admin cannot promote a User to Admin", async () => {
+  const admin = createAdminMock([]);
+  const result = await updateManagedUser(admin, "Admin", "789", {
+    role: "Admin",
+  });
+
+  assert.deepEqual(result, { status: "forbidden" });
+  assert.equal(admin.calls.length, 0);
+});
+
+test("Superadmin cannot promote a pending or blocked account", async () => {
+  const admin = createAdminMock([
+    ...canonicalSchemaResponses(),
+    {
+      data: {
+        id: 789,
+        role_id: 3,
+        auth_user_id: "auth-user",
+        approval_status: "Pending",
+        is_blocked: false,
+        status: "Active",
+      },
+      error: null,
+    },
+    { data: { name: "User" }, error: null },
+  ]);
+
+  const result = await updateManagedUser(admin, "Superadmin", "789", {
+    role: "Admin",
+  });
+
+  assert.deepEqual(result, { status: "ineligible" });
+  assert.equal(admin.calls.some((call) => call.update), false);
+});
+
 test("text-role schema lists accounts using created_at without a role table", async () => {
   const admin = createAdminMock([
     { data: null, error: { code: "42703" } },
@@ -338,6 +531,56 @@ test("Admin cannot update a Superadmin account", async () => {
   });
 
   assert.equal(result.status, "forbidden");
+  assert.equal(admin.calls.some((call) => call.update), false);
+});
+
+test("Superadmin cannot block a Superadmin account", async () => {
+  const admin = createAdminMock([
+    ...canonicalSchemaResponses(),
+    {
+      data: {
+        id: 1,
+        role_id: 1,
+        auth_user_id: "auth-superadmin",
+        approval_status: "Approved",
+        is_blocked: false,
+        status: "Active",
+      },
+      error: null,
+    },
+    { data: { name: "Superadmin" }, error: null },
+  ]);
+
+  const result = await updateManagedUser(admin, "Superadmin", "1", {
+    isBlocked: true,
+  });
+
+  assert.deepEqual(result, { status: "protected" });
+  assert.equal(admin.calls.some((call) => call.update), false);
+});
+
+test("Superadmin cannot demote a Superadmin account", async () => {
+  const admin = createAdminMock([
+    ...canonicalSchemaResponses(),
+    {
+      data: {
+        id: 1,
+        role_id: 1,
+        auth_user_id: "auth-superadmin",
+        approval_status: "Approved",
+        is_blocked: false,
+        status: "Active",
+      },
+      error: null,
+    },
+    { data: { name: "Superadmin" }, error: null },
+  ]);
+
+  const result = await updateManagedUser(admin, "Superadmin", "1", {
+    role: "User",
+  });
+
+  assert.deepEqual(result, { status: "protected" });
   assert.equal(admin.calls.some((call) => call.update), false);
 });
 

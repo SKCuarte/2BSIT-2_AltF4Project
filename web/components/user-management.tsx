@@ -198,6 +198,45 @@ export function UserManagement({ actorRole }: { actorRole: "Admin" | "Superadmin
     }
   }
 
+  async function toggleAdminRole(user: ManagedUser) {
+    const newRole = user.role === "User" ? "Admin" : "User";
+    const action = newRole === "Admin" ? "promote" : "demote";
+    if (
+      !window.confirm(
+        `Are you sure you want to ${action} ${user.firstName} ${user.lastName} to ${newRole}?`
+      )
+    ) {
+      return;
+    }
+
+    setSavingId(user.id);
+    setErrorMessage("");
+    setNotice("");
+    try {
+      const response = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+      const result: unknown = await response.json();
+      if (!response.ok) {
+        setErrorMessage(
+          isErrorResponse(result)
+            ? result.error
+            : `Unable to ${action} this account. Please try again.`
+        );
+        return;
+      }
+
+      setNotice(`${user.firstName} ${user.lastName} is now a ${newRole}.`);
+      setRefreshKey((value) => value + 1);
+    } catch {
+      setErrorMessage(`Unable to ${action} this account. Please try again.`);
+    } finally {
+      setSavingId("");
+    }
+  }
+
   const pageCount = Math.max(1, Math.ceil(total / 25));
 
   return (
@@ -305,6 +344,17 @@ export function UserManagement({ actorRole }: { actorRole: "Admin" | "Superadmin
                     >
                       Edit
                     </button>
+                    {actorRole === "Superadmin" && user.status === "Active" && (
+                      <button
+                        aria-label={`${user.role === "User" ? "Promote" : "Demote"} ${user.firstName} ${user.lastName} ${user.role === "User" ? "to Admin" : "to User"}`}
+                        className="um-action um-action-role"
+                        disabled={savingId === user.id}
+                        onClick={() => void toggleAdminRole(user)}
+                        type="button"
+                      >
+                        {user.role === "User" ? "Promote to Admin" : "Demote to User"}
+                      </button>
+                    )}
                     <button
                       aria-label={`${user.status === "Blocked" ? "Unblock" : "Block"} ${user.firstName} ${user.lastName}`}
                       className={`um-action ${user.status === "Blocked" ? "um-action-unblock" : "um-action-block"}`}

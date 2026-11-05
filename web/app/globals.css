@@ -668,6 +668,130 @@ a:focus-visible {
   width: 100%;
 }
 
+.um-approvals {
+  margin-bottom: 28px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.um-approval-heading,
+.um-approval-card-status,
+.um-approval-card-main,
+.um-approval-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.um-approval-heading {
+  margin-bottom: 20px;
+}
+
+.um-approval-heading .um-eyebrow {
+  color: var(--accent);
+}
+
+.um-approval-heading h2 {
+  margin: 3px 0;
+  font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+}
+
+.um-approval-heading .sub {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.um-approval-count {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #fff0d6;
+  color: #765314;
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.um-approval-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.um-approval-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.um-approval-card-status {
+  justify-content: flex-start;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.um-approval-card-main {
+  align-items: flex-start;
+}
+
+.um-approval-card-main h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.um-approval-card-main p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.um-approval-role {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.um-approval-actions {
+  justify-content: flex-start;
+  margin-top: 14px;
+}
+
+.um-approval-button {
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.um-approval-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.um-approve {
+  background: #e1f4e8;
+  color: #17613a;
+}
+
+.um-reject {
+  background: #f9e3e1;
+  color: #8e2d27;
+}
+
+.um-approval-state {
+  margin: 0;
+  padding: 20px;
+  border-radius: 10px;
+  background: var(--soft);
+  color: var(--muted);
+  text-align: center;
+}
+
 .um-heading,
 .um-modal-heading,
 .um-pagination,
@@ -862,6 +986,11 @@ a:focus-visible {
   color: #17613a;
 }
 
+.um-action-role {
+  border-color: #7059a5;
+  color: #604990;
+}
+
 .um-pagination {
   margin-top: 16px;
   color: var(--muted);
@@ -974,6 +1103,21 @@ a:focus-visible {
 
   .um-content {
     padding: 20px 16px 40px;
+  }
+
+  .um-approval-heading,
+  .um-approval-card-main {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .um-approval-heading {
+    gap: 10px;
+  }
+
+  .um-approval-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .um-heading,
