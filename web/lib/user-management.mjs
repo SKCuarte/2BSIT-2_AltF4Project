@@ -104,12 +104,14 @@ export function validateUserChanges(value) {
   return null;
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// app_user.id is BIGINT in the migrations but UUID in some live databases.
 function isAppUserId(value) {
-  return (
-    typeof value === "string" &&
-    /^[1-9]\d{0,18}$/.test(value) &&
-    BigInt(value) <= 9223372036854775807n
-  );
+  if (typeof value !== "string") return false;
+  if (UUID_PATTERN.test(value)) return true;
+  return /^[1-9]\d{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n;
 }
 
 async function findOptionalColumn(admin, column) {

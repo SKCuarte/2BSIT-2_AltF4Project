@@ -584,6 +584,26 @@ test("Superadmin cannot demote a Superadmin account", async () => {
   assert.equal(admin.calls.some((call) => call.update), false);
 });
 
+test("approving a pending User accepts a UUID app_user ID", async () => {
+  const id = "371ce88b-35f6-4bbc-a174-e6c29cfedd44";
+  const admin = createAdminMock([
+    ...canonicalSchemaResponses(),
+    { data: { id: 3 }, error: null },
+    { data: { id, is_blocked: false }, error: null },
+  ]);
+
+  const result = await decideUserApproval(admin, id, "approve");
+
+  assert.equal(result.status, "ok");
+  assert.deepEqual(
+    admin.calls.find((call) => call.update).filters[0],
+    ["eq", "id", id]
+  );
+  assert.deepEqual(await decideUserApproval(createAdminMock([]), "not-an-id", "approve"), {
+    status: "invalid",
+  });
+});
+
 test("blocking a User with a BIGINT ID updates is_blocked after authorization", async () => {
   const admin = createAdminMock([
     ...canonicalSchemaResponses(),
