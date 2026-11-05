@@ -28,10 +28,13 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isLoginPage = pathname === "/login";
   const isPublicRegistrationPage = pathname === "/register";
+  const isLandingPage = pathname === "/";
   const config = getSupabaseServerConfig();
 
   if (!config) {
-    if (isLoginPage || isPublicRegistrationPage) return NextResponse.next();
+    if (isLandingPage || isLoginPage || isPublicRegistrationPage) {
+      return NextResponse.next();
+    }
     return NextResponse.redirect(
       new URL("/login?error=configuration", request.url)
     );
@@ -56,6 +59,7 @@ export async function proxy(request: NextRequest) {
   const { data, error } = await supabase.auth.getUser();
   if (!data.user || error) {
     if (
+      isLandingPage ||
       isLoginPage ||
       isPublicRegistrationPage ||
       pathname === "/set-password" ||

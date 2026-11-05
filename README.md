@@ -66,6 +66,10 @@ Migration `008_protect_last_superadmin.sql` adds database triggers that prevent 
 
 ---
 
+## Global website (`global` branch)
+
+The `global` branch is the integrated site: everything merged to `main` plus the Superadmin approvals work (S1-DEV-06), connected as one flow. The public landing page (`/`) links to Register and Log in; signed-in approved users who visit `/` are sent to `/dashboard`, which links to User Management. Run `npm run dev` in `web/` and open `http://localhost:3000`.
+
 ## 👥 Team Roles & Responsibilities
 
 | Role | Lead / Assignees | Key Scope |
