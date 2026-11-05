@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { SetPasswordForm } from "@/components/set-password-form";
 import { getProfileAccessIssue } from "@/lib/auth-policy.mjs";
 import {
@@ -15,6 +16,7 @@ import {
 export const instant = false;
 
 export default async function SetPasswordPage() {
+  await connection();
   const config = getSupabaseServerConfig();
   if (!config) redirect("/login?error=configuration");
 
