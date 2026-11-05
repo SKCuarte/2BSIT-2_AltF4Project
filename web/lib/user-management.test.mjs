@@ -341,15 +341,15 @@ test("Admin cannot update a Superadmin account", async () => {
   assert.equal(admin.calls.some((call) => call.update), false);
 });
 
-test("blocking a User only updates is_blocked after target-role authorization", async () => {
+test("blocking a User with a BIGINT ID updates is_blocked after authorization", async () => {
   const admin = createAdminMock([
     ...canonicalSchemaResponses(),
-    { data: { id: 3, role_id: 3, auth_user_id: "auth-user" }, error: null },
+    { data: { id: 789, role_id: 3, auth_user_id: "auth-user" }, error: null },
     { data: { name: "User" }, error: null },
-    { data: { id: 3 }, error: null },
+    { data: { id: 789 }, error: null },
   ]);
 
-  const result = await updateManagedUser(admin, "Admin", "3", {
+  const result = await updateManagedUser(admin, "Admin", "789", {
     isBlocked: true,
   });
 
@@ -357,7 +357,7 @@ test("blocking a User only updates is_blocked after target-role authorization", 
   const updateCall = admin.calls.find((call) => call.update);
   assert.deepEqual(updateCall.update, { is_blocked: true });
   assert.deepEqual(updateCall.filters, [
-    ["eq", "id", "3"],
+    ["eq", "id", "789"],
     ["eq", "role_id", 3],
   ]);
 });

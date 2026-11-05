@@ -317,7 +317,11 @@ export async function updateManagedUser(
   targetId,
   rawChanges
 ) {
-  if (!/^[0-9a-f-]{1,64}$/i.test(targetId)) {
+  if (
+    typeof targetId !== "string" ||
+    !/^[1-9]\d{0,18}$/.test(targetId) ||
+    BigInt(targetId) > 9223372036854775807n
+  ) {
     return { status: "invalid" };
   }
   const changes = validateUserChanges(rawChanges);
