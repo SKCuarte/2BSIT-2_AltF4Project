@@ -70,6 +70,57 @@
         <p>Customers, products, orders and revenue sit together on one dashboard. Log in to see your latest figures.</p>
       </div>
     </section>
+
+    <section class="palette-preview" aria-labelledby="palette-title">
+      <div class="palette-in">
+        <div class="palette-heading">
+          <div>
+            <p class="palette-kicker">Hope, Inc. ERP</p>
+            <h2 id="palette-title">Color palette</h2>
+          </div>
+          <p>Hi-Fi interface tokens</p>
+        </div>
+        <div class="palette-group">
+          <h3>Light theme</h3>
+          <div class="palette-grid">
+            <div class="swatch"><span style="--swatch:#fbfcfd"></span><strong>Background</strong><small>--bg · #fbfcfd</small></div>
+            <div class="swatch"><span style="--swatch:#ffffff"></span><strong>Surface</strong><small>--surface · #ffffff</small></div>
+            <div class="swatch"><span style="--swatch:#f1f6f8"></span><strong>Soft / Mist</strong><small>--soft · #f1f6f8</small></div>
+            <div class="swatch"><span style="--swatch:#10222e"></span><strong>Text</strong><small>--text · #10222e</small></div>
+            <div class="swatch"><span style="--swatch:#5d7080"></span><strong>Muted</strong><small>--muted · #5d7080</small></div>
+            <div class="swatch"><span style="--swatch:#e1e8ed"></span><strong>Border</strong><small>--border · #e1e8ed</small></div>
+            <div class="swatch"><span style="--swatch:#0e5a6b"></span><strong>Accent</strong><small>--accent · #0e5a6b</small></div>
+            <div class="swatch"><span style="--swatch:#0a4653"></span><strong>Accent dark</strong><small>--accent-dark · #0a4653</small></div>
+            <div class="swatch"><span style="--swatch:#f2a541"></span><strong>Sun</strong><small>--sun · #f2a541</small></div>
+            <div class="swatch"><span style="--swatch:#c0392b"></span><strong>Danger</strong><small>--danger · #c0392b</small></div>
+          </div>
+        </div>
+        <div class="palette-group palette-dark-group">
+          <h3>Dark theme</h3>
+          <div class="palette-grid">
+            <div class="swatch"><span style="--swatch:#0b161e"></span><strong>Background</strong><small>--bg · #0b161e</small></div>
+            <div class="swatch"><span style="--swatch:#112029"></span><strong>Surface</strong><small>--surface · #112029</small></div>
+            <div class="swatch"><span style="--swatch:#0f1c25"></span><strong>Mist</strong><small>--mist · #0f1c25</small></div>
+            <div class="swatch"><span style="--swatch:#e6eef3"></span><strong>Text</strong><small>--text · #e6eef3</small></div>
+            <div class="swatch"><span style="--swatch:#8ea3b2"></span><strong>Muted</strong><small>--muted · #8ea3b2</small></div>
+            <div class="swatch"><span style="--swatch:#223540"></span><strong>Border</strong><small>--border · #223540</small></div>
+            <div class="swatch"><span style="--swatch:#5cc4d6"></span><strong>Accent</strong><small>--accent · #5cc4d6</small></div>
+            <div class="swatch"><span style="--swatch:#82d4e2"></span><strong>Accent dark</strong><small>--accent-dark · #82d4e2</small></div>
+            <div class="swatch"><span style="--swatch:#f2b258"></span><strong>Sun</strong><small>--sun · #f2b258</small></div>
+            <div class="swatch"><span style="--swatch:#f08a7e"></span><strong>Danger</strong><small>--danger · #f08a7e</small></div>
+          </div>
+        </div>
+        <div class="palette-group">
+          <h3>Navigation</h3>
+          <div class="palette-grid palette-nav-grid">
+            <div class="swatch"><span style="--swatch:#0f2430"></span><strong>Sidebar</strong><small>--sidebar · #0f2430</small></div>
+            <div class="swatch"><span style="--swatch:#dbe7ee"></span><strong>Sidebar text</strong><small>--sidebar-text · #dbe7ee</small></div>
+            <div class="swatch"><span style="--swatch:#8fa6b4"></span><strong>Sidebar muted</strong><small>--sidebar-muted · #8fa6b4</small></div>
+            <div class="swatch"><span style="--swatch:#16798d"></span><strong>Sidebar active</strong><small>--sidebar-active · #16798d</small></div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer>© 2026 Hope, inc. All rights reserved.</footer>
@@ -101,7 +152,7 @@
 <!--WELCOME BANNER-->
       <section class="welcome">
         <h2 id="hello"></h2>
-        <p>Here is your business at a glance. Contact an admin if you need elevated permissions.</p>
+        <p>Here is your business at a glance. Your available modules depend on the permissions assigned to your account.</p>
       </section>
       <section>
         <p class="muted" id="locked" hidden>Your access is turned off. Ask an administrator to restore it.</p>
@@ -114,19 +165,15 @@
             <div class="stat"><p class="st-l">Revenue (MTD)</p><p class="st-v">$84.2k</p><p class="st-n">↑ 18% vs last month</p></div>
           </div>
           <p class="muted note">These are sample figures.</p>
-          <section class="module-shortcuts" aria-labelledby="module-shortcuts-title">
-            <div class="module-shortcuts-heading"><h3 id="module-shortcuts-title">Modules</h3><span class="muted">Available with your current rights</span></div>
-            <div class="module-tiles" id="module-tiles"></div>
-          </section>
         </div>
       </section>
       </div>
 <!--MODULE PAGES: each one opens from the sidebar-->
       <section class="view" id="v-products" hidden></section>
       <section class="view" id="v-hr" hidden></section>
-      <section class="view" id="v-customers" hidden></section>
       <section class="view" id="v-sales" hidden></section>
       <section class="view" id="v-reports" hidden></section>
+      <section class="view" id="v-customers" hidden></section>
       <section class="view" id="v-users" hidden></section>
     </div>
   </div>
@@ -159,7 +206,7 @@
     <form id="fReg" class="auth-form" hidden>
       <div class="auth-heading">
         <h2>Create your account</h2>
-        <p class="sub">Submit your details to request access. An administrator will review your request.</p>
+        <p class="sub">Submit your details to request access. Your account will remain pending until an administrator approves it.</p>
       </div>
       <div class="auth-name-row">
         <div>
