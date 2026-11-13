@@ -226,4 +226,5 @@ Admin can grant only rights they hold themselves. Other rights are disabled and 
 | 680 px and below | User controls stack; rights cards become one column |
 | 480 px and below | Authentication name fields stack vertically |
 
-The current prototype uses the light theme. Dark tokens are shown in the palette reference.
+
+
