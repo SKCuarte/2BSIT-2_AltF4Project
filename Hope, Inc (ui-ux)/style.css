@@ -397,6 +397,9 @@ tr:last-child td { border-bottom: 0; }
 .dialog .msg.ok {
   color: var(--accent);
 }
+.auth-dialog .msg.ok {
+  color: #82d4e2;
+}
 .dialog #previewReset {
   margin-top: 10px;
 }

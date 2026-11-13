@@ -67,24 +67,26 @@ All four open as a centred dialog over a dimmed backdrop. Pressing Esc or clicki
   - This account is blocked. Contact an administrator.
 
 ### Registration
-- **Title:** Create account
-- **Subtitle:** New accounts start with the User role.
-- **Fields:** Full name, Email, Password (6 characters minimum), Confirm password
-- **Primary action:** "Create account"
-- **Link:** Back to log in
+- **Title:** Create your account
+- **Subtitle:** Submit a request for access. An administrator must approve the account before the user can sign in.
+- **Fields:** First name, Last name, Email
+- **Primary action:** "Submit account request"
+- **Link:** Sign in
 - **Messages:**
-  - Passwords do not match.
-  - This email is already registered. Log in instead.
-- **After success:** returns to Login with "Account created. Log in to continue."
-- **Default rights for new accounts:** Product View and Customer View.
+  - Please complete all fields.
+  - This email already has an account or request. Try signing in or contact your administrator.
+- **After submission:** returns to Login with "Your account request has been submitted. An administrator will review it before you can sign in."
+- **Initial role:** User
+- **Default rights:** None (0 of 36). Approval does not grant rights automatically; an administrator assigns any needed rights manually.
 
 ### Set Password
 - **Shown when:** a user whose account was added by an administrator logs in for the first time with the temporary password.
 - **Title:** Set your password
 - **Subtitle:** Your account was created by an administrator. Choose a password only you know.
 - **Fields:** New password, Confirm new password
-- **Primary action:** "Save and continue" (goes straight into the dashboard)
-- **Message:** Passwords do not match.
+- **Primary action:** "Set password"
+- **Messages:** Passwords do not match; approved-account verification errors are shown below the form.
+- **After success:** returns to Login with "Your password has been set. You can now sign in."
 
 ### Reset Password
 - **Title:** Reset password
@@ -94,51 +96,38 @@ All four open as a centred dialog over a dimmed backdrop. Pressing Esc or clicki
 - **Link:** Back to log in
 - **Messages:**
   - Passwords do not match.
-  - No account uses that email.
+  - A neutral recovery message is shown when the account cannot be verified; do not reveal whether an email is registered.
 - **After success:** returns to Login with "Password updated. Log in with your new password."
 
 ---
 
 ## Main navigation dashboard
 
-### 
-- **Sidebar (left, dark):**
-  - Logo: sunrise "H" mark with "Hope, Inc. ERP"
-  - Menu items with line icons: Dashboard, Product Management, Human Resource Management, Customer Management, User Management
-  - Profile block at the bottom: round avatar with the first letter of the name, full name, role, and a Log out button
-- **Top bar:** menu (hamburger) button, view title, "Edit content" button, role badge
-- **Sliding menu:** the hamburger button slides the sidebar out and back in. On phones and narrow windows (860 px and below) the sidebar starts closed, opens over the page, and a dim backdrop closes it when tapped.
+- **Sidebar (left, dark):** Hope, Inc. ERP logo, Dashboard, permission-available module links, and a bottom profile block with avatar, name, role, and Log out.
+- **Top bar:** hamburger button, current view title, and role badge.
+- **Responsive behavior:** at 860 px and below, the sidebar starts closed, opens over the page, and closes when the backdrop is tapped. At narrow widths, tables scroll horizontally and rights cards stack vertically.
+- **Welcome banner:** "Welcome back, [first name]!" and a short permissions-aware message.
+- **Four sample statistic tiles:** Total Customers, Products, Open Orders, and Revenue (MTD).
+- **Module access:** a module appears when the user has at least one right in that module. The prototype uses sidebar navigation; it does not show dashboard module tiles.
+- **Reports:** the Reports view shows the seven canonical report actions. There is no separate Settings rights group.
 
-### Content
-- **Welcome banner:** teal card with "Welcome back, [first name]!", a short line of text and two sunrise circles in the corner
-- **Four stat tiles:** Total Customers, Products, Open Orders, Revenue (MTD), each with a note line. The figures are sample values that can be replaced with Edit content.
-- **Module tiles (5):** Product Management, Human Resource Management, Customer Management, User Management, Reports & Settings. Each shows an icon, a title, a one-line description and "n of N rights".
+### Access states
 
-### Tile and menu states
-| State | Look and behaviour |
-|---|---|
-| Allowed | Full colour, pointer cursor, reachable with the keyboard, opens the module |
-| No View right | Dimmed, red "Access off" tag, no click and no tab stop |
-| User Management for a User account | Tile and menu item are removed |
-| Reports & Settings | Allowed tile shows a short notice that the module opens in a later sprint |
-
-Menu items follow the same rule: an item appears only if the user holds the View right for that module.
+Module actions are shown only when the user has the matching action right. User Management is available to Admin and Super Admin accounts by role. Super Admin can grant all 36 module rights; Admin can grant only rights assigned to their own account. Newly registered accounts remain pending and start with no rights.
 
 ---
 
-## Module screens (Products, HR, Customers)
-
-Each module has a view title, an add form (shown only with the Create right) and a table.
+## Module screen previews
 
 | Module | Columns |
 |---|---|
 | Product Management | SKU, Product, Price, Stock |
 | Human Resource Management | Employee, Position, Department, Status |
 | Customer Management | Name, Email, Phone, Status |
+| Sales | Sale ID, Customer, Date, Total |
+| Reports | Report, Description, Last updated |
 
-- Edit and Delete buttons appear only with the Edit and Delete rights.
-- Delete always asks for confirmation.
-- Status tags: Active in teal; Inactive and On leave in red.
+Create, edit, delete, price, and report controls follow their matching canonical rights. Delete actions ask for confirmation. Active status is teal; inactive and on-leave statuses use the warning color. Product, HR, Customer, Sales, and Reports CRUD views are supporting references; the S1-UIX-04 handoff focuses on authentication, dashboard navigation, User Management, and the rights dialog.
 
 ---
 
@@ -147,12 +136,12 @@ Each module has a view title, an add form (shown only with the Create right) and
 ### List view
 - **Toolbar:** search box (name or email), status filter (All, Active, Blocked), and for Super Admins a role filter (All roles, Admins, Users). "Add user" sits at the right.
 - **Table columns:** Name, Email, Role, Status, Rights (for example "3 / 36"), Actions
-- **Row actions:** Edit, Rights, Block or Unblock, Delete. Each button appears only if the viewer holds the matching right.
+- **Row actions:** Edit, Rights, Block or Unblock, and Delete are available according to the viewer role. Super Admin can manage Admin and User accounts; Admin can manage User accounts only.
 - **Empty result:** "No accounts match your filters."
 
 ### Add / Edit User form (dialog)
 - **Fields:** Full name, Email, Role, and (Add only) Temporary password
-- **Add subtitle:** The user sets their own password at first login.
+- **Add subtitle:** An administrator provides a temporary password; the user sets a new password at first sign-in. New accounts start with no module rights.
 - **Buttons:** "Add user" or "Save changes", and Cancel
 - **Error:** That email is already registered.
 
@@ -192,23 +181,25 @@ Select all and Clear all only change rights the viewer is allowed to grant.
 
 ### Components
 
-**Product Management (8)**
-View · Create · Edit · Delete · Import · Export · Adjust stock · Set prices
+**Customer (3)**
+Add Customer · Edit Customer · Delete Customer
 
-**Human Resource Management (8)**
-View · Create · Edit · Delete · Approve leave · Run payroll · View salaries · Export
+**Product (6)**
+Add Product · Edit Product · Delete Product · Add Price · Edit Price · Delete Price
 
-**Customer Management (8)**
-View · Create · Edit · Delete · Import · Export · Merge duplicates · View history
+**HR / Human Resources (13)**
+Add Job · Edit Job · Delete Job · Add Department · Edit Department · Delete Department · Add Employee · Edit Employee · Delete Employee · View Job History · Add Job History · Edit Job History · Delete Job History
 
-**User Management (7)**
-View users · Add users · Edit users · Block / Unblock · Reset passwords · Assign rights · Delete users
+**Sales (7)**
+Add Sale · Edit Sale · Delete Sale · View Sale Details · Add Sale Detail · Edit Sale Detail · Delete Sale Detail
 
-**Reports & Settings (5)**
-View reports · Export reports · Schedule reports · Edit settings · View audit log
+**Reports (7)**
+Top Customers · Product Master List · Top Products · Active Employees · All Employees · Employee Job History · Top Sales
+
+User Management is role-gated and is not part of the 36-right module catalog.
 
 ### Admin Rules/Rights
-Admin can grant only rights they hold themselves. Any other right is greyed out with the tooltip "You don't hold this right, so you can't grant it."
+Admin can grant only rights they hold themselves. Other rights are disabled and greyed out with the tooltip "You don't hold this right, so you can't grant it." Select all and Clear all affect only grantable rights.
 
 ---
 
@@ -218,7 +209,7 @@ Admin can grant only rights they hold themselves. Any other right is greyed out 
 |---|---|
 | Primary, transparent and warning buttons | Default, hover, keyboard focus (2 px teal outline) |
 | Input and select | Default, focus (teal border), required, error message below the form |
-| Module tile | Default, hover (teal border), focus, dimmed |
+| Module navigation link | Available when the user has a right in that module; current view is highlighted |
 | Status tag | Active (teal), Blocked / Inactive / On leave (red) |
 | Rights toggle | Checked, unchecked, disabled (greyed, tooltip) |
 | Toast | Bottom centre, disappears after 2.2 seconds |
@@ -232,6 +223,7 @@ Admin can grant only rights they hold themselves. Any other right is greyed out 
 |---|---|
 | Above 860 px | Sidebar open by default; landing hero in two columns |
 | 860 px and below | Sidebar becomes an overlay and starts closed; hero stacks; tables scroll sideways |
-| Not yet defined | 600 px and 480 px breakpoints (logged as audit ticket UI-08) |
+| 680 px and below | User controls stack; rights cards become one column |
+| 480 px and below | Authentication name fields stack vertically |
 
-Light and dark themes follow the device setting.
+The current prototype uses the light theme. Dark tokens are shown in the palette reference.
