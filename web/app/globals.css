@@ -1169,3 +1169,11 @@ a.dash-tile:hover { border-color: var(--accent); background: var(--accent-light)
 .dash-tile strong { display: block; }
 .dash-tile small { color: var(--muted); }
 
+
+.module-data-section { margin-top: 24px; }
+.module-data-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.module-data-heading h2 { margin: 0; font-size: 1.2rem; }
+.module-data-heading span { color: var(--muted); font-size: 0.88rem; }
+.module-data-section .um-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+.module-data-section .um-table { min-width: 640px; }
+.module-data-section td { max-width: 320px; overflow-wrap: anywhere; }

@@ -9,18 +9,18 @@ import { createSupabaseAdminClient, getSupabaseServerConfig } from "@/lib/supaba
 export const instant = false;
 
 const MODULE_TILES = [
-  { code: "CUSTOMER", title: "Customer", blurb: "Customer records and account activity" },
-  { code: "PRODUCT", title: "Product", blurb: "Catalog, inventory and pricing" },
-  { code: "HR", title: "Human Resources", blurb: "Jobs, departments, employees and job history" },
-  { code: "SALES", title: "Sales", blurb: "Sales records and transaction details" },
-  { code: "REPORTS", title: "Reports", blurb: "Operational summaries and performance reports" },
+  { code: "CUSTOMER", slug: "customers", title: "Customer", blurb: "Customer records and account activity" },
+  { code: "PRODUCT", slug: "products", title: "Product", blurb: "Catalog, inventory and pricing" },
+  { code: "HR", slug: "hr", title: "Human Resources", blurb: "Jobs, departments, employees and job history" },
+  { code: "SALES", slug: "sales", title: "Sales", blurb: "Sales records and transaction details" },
+  { code: "REPORTS", slug: "reports", title: "Reports", blurb: "Operational summaries and performance reports" },
 ];
 
-const SAMPLE_STATS = [
-  { label: "Total Customers", value: "4", note: "1 inactive" },
-  { label: "Products", value: "386", note: "5 new this week" },
-  { label: "Open Orders", value: "94", note: "8% vs last week" },
-  { label: "Revenue (MTD)", value: "$84.2k", note: "18% vs last month" },
+const MODULE_STATS = [
+  { code: "CUSTOMER", label: "Customers", table: "CUSTOMER" },
+  { code: "PRODUCT", label: "Products", table: "PRODUCT" },
+  { code: "HR", label: "Active employees", table: "EMPLOYEE" },
+  { code: "SALES", label: "Sales records", table: "SALES" },
 ];
 
 export default async function DashboardPage() {
@@ -28,6 +28,9 @@ export default async function DashboardPage() {
 
   let canCreateUsers = false;
   let adminCheckUnavailable = false;
+  let moduleAccessUnavailable = false;
+  let dashboardDataUnavailable = false;
+  let dashboardStats: { label: string; value: string }[] = [];
   let grantedModules = new Set<string>();
   let actorRole: "User" | "Admin" | "Superadmin" | "Account" = "Account";
   const config = getSupabaseServerConfig();
@@ -59,20 +62,59 @@ export default async function DashboardPage() {
       adminCheckUnavailable = access.status === "unavailable";
 
       const admin = createSupabaseAdminClient();
-      const { data: account } = await admin
+      const { data: account, error: accountError } = await admin
         .from("app_user")
         .select("id")
         .eq("auth_user_id", data.user.id)
         .maybeSingle();
-      if (account) {
-        const { data: rights } = await admin
+      if (accountError) {
+        console.error("Dashboard module account lookup failed:", {
+          code: accountError.code ?? "account_lookup_failed",
+        });
+        moduleAccessUnavailable = true;
+      } else if (account) {
+        const { data: rights, error: rightsError } = await admin
           .from("v_user_effective_rights")
           .select("module_code")
           .eq("user_id", account.id)
           .eq("granted", true);
-        grantedModules = new Set(
-          (rights ?? []).map((row: { module_code: string }) => row.module_code)
-        );
+        if (rightsError) {
+          console.error("Dashboard module permission lookup failed:", {
+            code: rightsError.code ?? "permission_lookup_failed",
+          });
+          moduleAccessUnavailable = true;
+        } else {
+          grantedModules = new Set(
+            (rights ?? []).map((row: { module_code: string }) => row.module_code)
+          );
+          const stats = await Promise.all(
+            MODULE_STATS.filter((item) => grantedModules.has(item.code)).map(
+              async (item) => {
+                let query = admin
+                  .from(item.table)
+                  .select("*", { count: "exact", head: true });
+                if (item.code === "HR") query = query.eq("status", "Active");
+                const result = await query;
+                if (result.error) {
+                  console.error("Dashboard module count failed:", {
+                    code: result.error.code ?? "module_count_failed",
+                    module: item.code,
+                  });
+                  return { label: item.label, value: "Unavailable", failed: true };
+                }
+                return {
+                  label: item.label,
+                  value: result.count?.toLocaleString() ?? "0",
+                  failed: false,
+                };
+              }
+            )
+          );
+          dashboardDataUnavailable = stats.some((stat) => stat.failed);
+          dashboardStats = stats.map(({ label, value }) => ({ label, value }));
+        }
+      } else {
+        moduleAccessUnavailable = true;
       }
     }
   } else {
@@ -131,6 +173,16 @@ export default async function DashboardPage() {
               Admin tools are temporarily unavailable. Refresh the page to try again.
             </p>
           )}
+          {moduleAccessUnavailable && (
+            <p className="msg" role="alert">
+              Module access is temporarily unavailable. Refresh the page to try again.
+            </p>
+          )}
+          {dashboardDataUnavailable && (
+            <p className="msg" role="alert">
+              Some dashboard totals could not be loaded. Contact your database administrator.
+            </p>
+          )}
           {!canCreateUsers && !adminCheckUnavailable && (
             <p className="um-access-note">
               Your verified role is {actorRole}. User Management is available only to
@@ -139,15 +191,16 @@ export default async function DashboardPage() {
             </p>
           )}
           <section aria-label="Key figures" className="dash-stats">
-            {SAMPLE_STATS.map((stat) => (
+            {dashboardStats.map((stat) => (
               <div className="dash-stat" key={stat.label}>
                 <p>{stat.label}</p>
                 <strong>{stat.value}</strong>
-                <small>{stat.note}</small>
               </div>
             ))}
           </section>
-          <p className="um-access-note">These are sample figures.</p>
+          {dashboardStats.length === 0 && !moduleAccessUnavailable && (
+            <p className="um-access-note">No dashboard totals are available for the rights assigned to your account.</p>
+          )}
           <section aria-labelledby="dash-modules-title" className="dash-modules">
             <div className="dash-modules-heading">
               <h3 id="dash-modules-title">Modules</h3>
@@ -165,15 +218,19 @@ export default async function DashboardPage() {
               )}
               {MODULE_TILES.filter((tile) => grantedModules.has(tile.code)).map(
                 (tile) => (
-                  <div className="dash-tile" key={tile.code}>
+                  <Link className="dash-tile" href={`/dashboard/modules/${tile.slug}`} key={tile.code}>
                     <span>
                       <strong>{tile.title}</strong>
                       <small>{tile.blurb}</small>
                     </span>
-                  </div>
+                    <span aria-hidden="true">&rarr;</span>
+                  </Link>
                 )
               )}
             </div>
+            {moduleAccessUnavailable && (
+              <p className="um-access-note">Module links could not be verified and are hidden until access is available.</p>
+            )}
             {!canCreateUsers && grantedModules.size === 0 && (
               <p className="um-access-note">
                 No modules are assigned to your account yet. Ask an administrator for access.
