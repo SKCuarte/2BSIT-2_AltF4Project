@@ -33,6 +33,7 @@ DECLARE
     test_right_id BIGINT;
     test_user_id BIGINT;
     test_admin_id BIGINT;
+    test_grantor_id BIGINT;
     test_superadmin_id BIGINT;
     stored_email TEXT;
     stored_role TEXT;
@@ -112,6 +113,11 @@ BEGIN
     VALUES ('Verify', 'Admin', 'verify.admin@example.invalid', admin_role_id,
         '00000000-0000-4000-8000-000000000002', 'Approved')
     RETURNING id INTO test_admin_id;
+    -- Keep the permission grantor separate from the Admin promoted for the guard test.
+    INSERT INTO public.app_user (first_name, last_name, email, role_id, auth_user_id, approval_status)
+    VALUES ('Verify', 'Grantor', 'verify.grantor@example.invalid', admin_role_id,
+        '00000000-0000-4000-8000-000000000004', 'Approved')
+    RETURNING id INTO test_grantor_id;
     INSERT INTO public.app_user (first_name, last_name, email, role_id, auth_user_id, approval_status)
     VALUES ('Verify', 'Superadmin', 'verify.superadmin@example.invalid', superadmin_role_id,
         '00000000-0000-4000-8000-000000000003', 'Approved')
@@ -135,9 +141,9 @@ BEGIN
         RAISE EXCEPTION 'Supabase-managed password columns remain in app_user';
     END IF;
 
-    PERFORM set_config('app.user_id', test_admin_id::TEXT, TRUE);
+    PERFORM set_config('app.user_id', test_grantor_id::TEXT, TRUE);
     INSERT INTO public.user_permission (user_id, right_id, granted_by)
-    VALUES (test_user_id, test_right_id, test_admin_id);
+    VALUES (test_user_id, test_right_id, test_grantor_id);
 
     UPDATE public.app_user
     SET is_blocked = TRUE, approval_status = 'Approved'
@@ -217,7 +223,7 @@ BEGIN
 END;
 $$;
 
--- Last active Superadmin guard (migration 007). Every failing change must be rejected.
+-- Last active Superadmin guard (migration 008). Every failing change must be rejected.
 DO $$
 DECLARE
     sa_id BIGINT;
