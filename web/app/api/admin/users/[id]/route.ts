@@ -63,7 +63,10 @@ export async function PATCH(
   const result = await updateManagedUser(admin, access.roleName, id, body);
   if (result.status === "invalid") {
     return NextResponse.json(
-      { error: "Only valid name changes or a block-status change are allowed." },
+      {
+        error:
+          "Only valid name changes, block-status changes, or User/Admin role changes are allowed.",
+      },
       { status: 400 }
     );
   }
@@ -71,6 +74,30 @@ export async function PATCH(
     return NextResponse.json(
       { error: "You are not allowed to manage that account." },
       { status: 403 }
+    );
+  }
+  if (result.status === "protected") {
+    return NextResponse.json(
+      {
+        error:
+          "Superadmin accounts cannot be blocked, demoted, disabled, or deleted through User Management.",
+      },
+      { status: 409 }
+    );
+  }
+  if (result.status === "ineligible") {
+    return NextResponse.json(
+      {
+        error:
+          "Only approved, active, unblocked accounts can be promoted or demoted.",
+      },
+      { status: 409 }
+    );
+  }
+  if (result.status === "conflict") {
+    return NextResponse.json(
+      { error: "This account changed while you were editing it. Refresh the list." },
+      { status: 409 }
     );
   }
   if (result.status === "not_found") {

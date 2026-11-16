@@ -58,6 +58,12 @@ Approved, active Admins and Superadmins can open **User Management** from the Da
 
 The page and each API operation verify the signed-in administrator and target role on the server. Blocking updates the existing `app_user.is_blocked` field, which the login route and Next.js proxy already enforce. The existing server-side Supabase Auth provisioning flow creates the Auth identity and application profile; no new SQL migration or Supabase Dashboard setting is required for this feature.
 
+## Superadmin approvals and role management (S1-DEV-06)
+
+Only an approved, active Superadmin can review pending User registrations, approve or reject them, and promote or demote approved, active, unblocked accounts between User and Admin. Approval sets `approval_status` to `Approved` and account `status` to `Active`; rejection sets `approval_status` to `Rejected`. These values follow the existing database constraints. Server routes re-verify the caller's role for every operation, and Superadmin accounts cannot be changed through User Management.
+
+Migration `008_protect_last_superadmin.sql` adds database triggers that prevent deleting, truncating, or making the last active, unblocked, approved Superadmin ineligible by changing its role, `status`, `is_blocked`, or `approval_status` (or by deactivating/renaming the Superadmin role). Checks are serialized with an advisory transaction lock and also apply to `service_role`, which bypasses RLS. The guard only reads `role_id`; a legacy text `role` column, if present in a database, must be kept in sync separately. Superusers can still bypass triggers with `session_replication_role`.
+
 ---
 
 ## 👥 Team Roles & Responsibilities

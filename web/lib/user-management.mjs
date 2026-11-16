@@ -1,4 +1,7 @@
-import { findAppUserRoleColumn } from "./role-lookup.mjs";
+import {
+  findActiveRoleId,
+  findAppUserRoleColumn,
+} from "./role-lookup.mjs";
 
 const VALID_STATUSES = new Set([
   "Active",
@@ -90,7 +93,25 @@ export function validateUserChanges(value) {
     return { type: "block", isBlocked: value.isBlocked };
   }
 
+  if (
+    keys.length === 1 &&
+    keys[0] === "role" &&
+    (value.role === "User" || value.role === "Admin")
+  ) {
+    return { type: "role", role: value.role };
+  }
+
   return null;
+}
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// app_user.id is BIGINT in the migrations but UUID in some live databases.
+function isAppUserId(value) {
+  if (typeof value !== "string") return false;
+  if (UUID_PATTERN.test(value)) return true;
+  return /^[1-9]\d{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n;
 }
 
 async function findOptionalColumn(admin, column) {
@@ -277,15 +298,128 @@ export async function listManagedUsers(admin, actorRole, rawQuery) {
   };
 }
 
+export async function listPendingUserApprovals(admin) {
+  const schema = await getUserSchema(admin);
+  if (schema.error) {
+    return { status: "unavailable", code: roleErrorCode(schema.error) };
+  }
+
+  let userRole = "User";
+  let rolesById = null;
+  if (schema.roleColumn === "role_id") {
+    const { data: role, error: roleError } = await admin
+      .from("role")
+      .select("id")
+      .eq("name", "User")
+      .eq("status", "Active")
+      .maybeSingle();
+    if (roleError) {
+      return { status: "unavailable", code: roleErrorCode(roleError) };
+    }
+    if (!role) return { status: "ok", approvals: [] };
+    userRole = role.id;
+    rolesById = new Map([[String(role.id), "User"]]);
+  }
+
+  const columns = [
+    "id",
+    "first_name",
+    "last_name",
+    "email",
+    schema.roleColumn,
+    "approval_status",
+    "is_blocked",
+    ...(schema.statusColumn ? [schema.statusColumn] : []),
+  ];
+  const { data, error } = await admin
+    .from("app_user")
+    .select(columns.join(", "))
+    .eq(schema.roleColumn, userRole)
+    .eq("approval_status", "Pending")
+    .order("id", { ascending: true });
+  if (error) return { status: "unavailable", code: roleErrorCode(error) };
+
+  return {
+    status: "ok",
+    approvals: (data ?? []).map((account) => ({
+      id: String(account.id),
+      firstName: account.first_name,
+      lastName: account.last_name,
+      email: account.email,
+      isBlocked: account.is_blocked,
+      role: rolesById
+        ? rolesById.get(String(account.role_id))
+        : account.role,
+    })),
+  };
+}
+
+export async function decideUserApproval(admin, targetId, decision) {
+  if (!isAppUserId(targetId) || !["approve", "reject"].includes(decision)) {
+    return { status: "invalid" };
+  }
+
+  const schema = await getUserSchema(admin);
+  if (schema.error) {
+    return { status: "unavailable", code: roleErrorCode(schema.error) };
+  }
+
+  let userRole = "User";
+  if (schema.roleColumn === "role_id") {
+    const { data: role, error: roleError } = await admin
+      .from("role")
+      .select("id")
+      .eq("name", "User")
+      .eq("status", "Active")
+      .maybeSingle();
+    if (roleError) {
+      return { status: "unavailable", code: roleErrorCode(roleError) };
+    }
+    if (!role) return { status: "not_found" };
+    userRole = role.id;
+  }
+
+  const values = {
+    approval_status: decision === "approve" ? "Approved" : "Rejected",
+    ...(decision === "approve" && schema.statusColumn
+      ? { [schema.statusColumn]: "Active" }
+      : {}),
+  };
+  const { data, error } = await admin
+    .from("app_user")
+    .update(values)
+    .eq("id", targetId)
+    .eq(schema.roleColumn, userRole)
+    .eq("approval_status", "Pending")
+    .select("id, is_blocked")
+    .maybeSingle();
+
+  if (error) return { status: "unavailable", code: roleErrorCode(error) };
+  if (!data) return { status: "conflict" };
+  return {
+    status: "ok",
+    approvalStatus: values.approval_status,
+    wasBlocked: data.is_blocked,
+  };
+}
+
 async function getManageableUser(admin, actorRole, targetId) {
   const schema = await getUserSchema(admin);
   if (schema.error) {
     return { status: "unavailable", code: roleErrorCode(schema.error) };
   }
 
+  const accountColumns = [
+    "id",
+    schema.roleColumn,
+    "auth_user_id",
+    "approval_status",
+    "is_blocked",
+    ...(schema.statusColumn ? [schema.statusColumn] : []),
+  ];
   const { data: account, error } = await admin
     .from("app_user")
-    .select(`id, ${schema.roleColumn}, auth_user_id`)
+    .select(accountColumns.join(", "))
     .eq("id", targetId)
     .maybeSingle();
   if (error) return { status: "unavailable", code: roleErrorCode(error) };
@@ -307,6 +441,11 @@ async function getManageableUser(admin, actorRole, targetId) {
     role = account.role;
   }
 
+  if (role === "Superadmin") {
+    return actorRole === "Superadmin"
+      ? { status: "protected" }
+      : { status: "forbidden" };
+  }
   if (!canManageRole(actorRole, role)) return { status: "forbidden" };
   return { status: "ok", account, schema, role };
 }
@@ -317,34 +456,67 @@ export async function updateManagedUser(
   targetId,
   rawChanges
 ) {
-  if (
-    typeof targetId !== "string" ||
-    !/^[1-9]\d{0,18}$/.test(targetId) ||
-    BigInt(targetId) > 9223372036854775807n
-  ) {
-    return { status: "invalid" };
-  }
+  if (!isAppUserId(targetId)) return { status: "invalid" };
   const changes = validateUserChanges(rawChanges);
   if (!changes) return { status: "invalid" };
+  if (changes.type === "role" && actorRole !== "Superadmin") {
+    return { status: "forbidden" };
+  }
 
   const target = await getManageableUser(admin, actorRole, targetId);
   if (target.status !== "ok") return target;
 
-  const values =
-    changes.type === "profile"
-      ? {
-          first_name: changes.firstName,
-          last_name: changes.lastName,
-        }
-      : { is_blocked: changes.isBlocked };
-  const { data, error } = await admin
+  if (changes.type === "role") {
+    if (
+      target.account.approval_status !== "Approved" ||
+      target.account.is_blocked ||
+      (target.schema.statusColumn &&
+        target.account[target.schema.statusColumn] !== "Active")
+    ) {
+      return { status: "ineligible" };
+    }
+  }
+
+  let values;
+  if (changes.type === "profile") {
+    values = {
+      first_name: changes.firstName,
+      last_name: changes.lastName,
+    };
+  } else if (changes.type === "block") {
+    values = { is_blocked: changes.isBlocked };
+  } else if (target.schema.roleColumn === "role_id") {
+    const roleResult = await findActiveRoleId(admin, changes.role);
+    if (roleResult.error || roleResult.roleId === null) {
+      return {
+        status: "unavailable",
+        code: roleErrorCode(roleResult.error ?? { code: "active_role_missing" }),
+      };
+    }
+    values = { role_id: roleResult.roleId };
+  } else {
+    values = { role: changes.role };
+  }
+
+  let query = admin
     .from("app_user")
     .update(values)
     .eq("id", targetId)
-    .eq(target.schema.roleColumn, target.account[target.schema.roleColumn])
-    .select("id")
-    .maybeSingle();
+    .eq(target.schema.roleColumn, target.account[target.schema.roleColumn]);
+  if (changes.type === "role") {
+    query = query
+      .eq("approval_status", "Approved")
+      .eq("is_blocked", false);
+    if (target.schema.statusColumn) {
+      query = query.eq(target.schema.statusColumn, "Active");
+    }
+  }
+  const { data, error } = await query.select("id").maybeSingle();
   if (error) return { status: "unavailable", code: roleErrorCode(error) };
-  if (!data) return { status: "not_found" };
+  if (!data) {
+    return changes.type === "role"
+      ? { status: "conflict" }
+      : { status: "not_found" };
+  }
   return { status: "ok" };
 }

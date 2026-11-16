@@ -60,3 +60,5 @@ WHERE expires_at <= CURRENT_TIMESTAMP OR used_at IS NOT NULL;
 ```
 
 Run `db/verification/password_reset_token_verification.sql` only against the disposable local/test database with the documented `auth.users` stub. It creates valid, expired, used, and blocked-user fixtures inside a transaction, reports each expected validity result, checks API-role access, and rolls everything back. Never run it against hosted Supabase Auth or Production.
+
+`008_protect_last_superadmin.sql` adds triggers on `app_user` and `role` that reject any change leaving no active, unblocked, approved Superadmin (including `service_role` writes).
