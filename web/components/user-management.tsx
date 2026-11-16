@@ -8,7 +8,7 @@ type ManagedUser = {
   firstName: string;
   lastName: string;
   email: string;
-  role: "User" | "Admin";
+  role: "User" | "Admin" | "Superadmin";
   status: "Active" | "Blocked" | "Inactive" | "Pending" | "Rejected";
   createdAt: string | null;
 };
@@ -344,7 +344,9 @@ export function UserManagement({ actorRole }: { actorRole: "Admin" | "Superadmin
                     >
                       Edit
                     </button>
-                    {actorRole === "Superadmin" && user.status === "Active" && (
+                    {actorRole === "Superadmin" &&
+                      user.role !== "Superadmin" &&
+                      user.status === "Active" && (
                       <button
                         aria-label={`${user.role === "User" ? "Promote" : "Demote"} ${user.firstName} ${user.lastName} ${user.role === "User" ? "to Admin" : "to User"}`}
                         className="um-action um-action-role"
