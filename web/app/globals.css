@@ -1058,6 +1058,32 @@ a:focus-visible {
   margin-top: 10px;
 }
 
+.um-rights-module {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.um-rights-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.um-rights-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.um-rights-content label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
