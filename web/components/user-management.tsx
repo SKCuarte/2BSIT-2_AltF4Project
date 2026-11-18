@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AdminUserProvisioningForm } from "@/components/admin-user-provisioning-form";
+import { RightsManagement } from "@/components/rights-management";
 
 type ManagedUser = {
   id: string;
@@ -23,6 +24,7 @@ type UserListResponse = {
 type ModalState =
   | { type: "add" }
   | { type: "edit"; user: ManagedUser }
+  | { type: "rights"; user: ManagedUser }
   | null;
 
 function isUserListResponse(value: unknown): value is UserListResponse {
@@ -344,6 +346,20 @@ export function UserManagement({ actorRole }: { actorRole: "Admin" | "Superadmin
                     >
                       Edit
                     </button>
+                    <button
+                      aria-label={`Manage rights for ${user.firstName} ${user.lastName}`}
+                      className="um-action um-action-edit"
+                      disabled={savingId === user.id || user.role === "Superadmin"}
+                      onClick={() => {
+                        setErrorMessage("");
+                        setNotice("");
+                        setModal({ type: "rights", user });
+                      }}
+                      type="button"
+                    >
+                      Rights
+                    </button>
+
                     {actorRole === "Superadmin" &&
                       user.role !== "Superadmin" &&
                       user.status === "Active" && (
@@ -414,7 +430,11 @@ export function UserManagement({ actorRole }: { actorRole: "Admin" | "Superadmin
           >
             <header className="um-modal-heading">
               <h2 id="um-modal-title">
-                {modal.type === "add" ? "Add User" : "Edit User"}
+                {modal.type === "add"
+                  ? "Add User"
+                  : modal.type === "edit"
+                    ? "Edit User"
+                    : "Manage Rights"}
               </h2>
               <button
                 aria-label="Close"
@@ -429,7 +449,7 @@ export function UserManagement({ actorRole }: { actorRole: "Admin" | "Superadmin
               <AdminUserProvisioningForm
                 onCreated={() => setRefreshKey((value) => value + 1)}
               />
-            ) : (
+            ) : modal.type === "edit" ? (
               <form className="um-edit-form" onSubmit={saveUser}>
                 <p className="sub">
                   Email and role cannot be changed here. Account status is managed separately.
@@ -456,6 +476,11 @@ export function UserManagement({ actorRole }: { actorRole: "Admin" | "Superadmin
                   {savingId === modal.user.id ? "Saving…" : "Save changes"}
                 </button>
               </form>
+            ) : (
+              <RightsManagement
+                userId={modal.user.id}
+                name={`${modal.user.firstName} ${modal.user.lastName}`.trim()}
+              />
             )}
           </section>
         </div>

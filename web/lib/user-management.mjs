@@ -403,7 +403,8 @@ export async function decideUserApproval(admin, targetId, decision) {
   };
 }
 
-async function getManageableUser(admin, actorRole, targetId) {
+export async function getManageableUser(admin, actorRole, targetId) {
+  if (!isAppUserId(targetId)) return { status: "invalid" };
   const schema = await getUserSchema(admin);
   if (schema.error) {
     return { status: "unavailable", code: roleErrorCode(schema.error) };
