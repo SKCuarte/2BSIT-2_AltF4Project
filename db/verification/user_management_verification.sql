@@ -33,6 +33,7 @@ DECLARE
     test_right_id BIGINT;
     test_user_id BIGINT;
     test_admin_id BIGINT;
+    test_grantor_id BIGINT;
     test_superadmin_id BIGINT;
     stored_email TEXT;
     stored_role TEXT;
@@ -112,6 +113,11 @@ BEGIN
     VALUES ('Verify', 'Admin', 'verify.admin@example.invalid', admin_role_id,
         '00000000-0000-4000-8000-000000000002', 'Approved')
     RETURNING id INTO test_admin_id;
+    -- Keep the permission grantor separate from the Admin promoted for the guard test.
+    INSERT INTO public.app_user (first_name, last_name, email, role_id, auth_user_id, approval_status)
+    VALUES ('Verify', 'Grantor', 'verify.grantor@example.invalid', admin_role_id,
+        '00000000-0000-4000-8000-000000000004', 'Approved')
+    RETURNING id INTO test_grantor_id;
     INSERT INTO public.app_user (first_name, last_name, email, role_id, auth_user_id, approval_status)
     VALUES ('Verify', 'Superadmin', 'verify.superadmin@example.invalid', superadmin_role_id,
         '00000000-0000-4000-8000-000000000003', 'Approved')
@@ -135,9 +141,9 @@ BEGIN
         RAISE EXCEPTION 'Supabase-managed password columns remain in app_user';
     END IF;
 
-    PERFORM set_config('app.user_id', test_admin_id::TEXT, TRUE);
+    PERFORM set_config('app.user_id', test_grantor_id::TEXT, TRUE);
     INSERT INTO public.user_permission (user_id, right_id, granted_by)
-    VALUES (test_user_id, test_right_id, test_admin_id);
+    VALUES (test_user_id, test_right_id, test_grantor_id);
 
     UPDATE public.app_user
     SET is_blocked = TRUE, approval_status = 'Approved'
@@ -213,6 +219,71 @@ BEGIN
         WHERE public.user_permission.user_id = test_superadmin_id
     ) THEN
         RAISE EXCEPTION 'Superadmin should not need explicit permission rows';
+    END IF;
+END;
+$$;
+
+-- Last active Superadmin guard (migration 008). Every failing change must be rejected.
+DO $$
+DECLARE
+    sa_id BIGINT;
+    second_id BIGINT;
+    sa_role BIGINT;
+    admin_role BIGINT;
+    attempt TEXT;
+    denied BOOLEAN;
+BEGIN
+    SELECT id INTO sa_role FROM public.role WHERE name = 'Superadmin';
+    SELECT id INTO admin_role FROM public.role WHERE name = 'Admin';
+    SELECT id INTO sa_id FROM public.app_user WHERE email = 'verify.superadmin@example.invalid';
+
+    FOREACH attempt IN ARRAY ARRAY[
+        'demote', 'block', 'inactivate', 'reject', 'delete', 'truncate', 'deactivate_role'
+    ] LOOP
+        denied := FALSE;
+        BEGIN
+            IF attempt = 'demote' THEN
+                UPDATE public.app_user SET role_id = admin_role WHERE id = sa_id;
+            ELSIF attempt = 'block' THEN
+                UPDATE public.app_user SET is_blocked = TRUE WHERE id = sa_id;
+            ELSIF attempt = 'inactivate' THEN
+                UPDATE public.app_user SET status = 'Inactive' WHERE id = sa_id;
+            ELSIF attempt = 'reject' THEN
+                UPDATE public.app_user SET approval_status = 'Rejected' WHERE id = sa_id;
+            ELSIF attempt = 'delete' THEN
+                DELETE FROM public.app_user WHERE id = sa_id;
+            ELSIF attempt = 'truncate' THEN
+                TRUNCATE public.app_user CASCADE;
+            ELSE
+                UPDATE public.role SET status = 'Inactive' WHERE id = sa_role;
+            END IF;
+        EXCEPTION WHEN restrict_violation THEN
+            denied := TRUE;
+        END;
+        IF NOT denied THEN
+            RAISE EXCEPTION 'Last Superadmin guard did not block: %', attempt;
+        END IF;
+    END LOOP;
+
+    -- With a second eligible Superadmin, the first can be demoted, blocked, or deleted.
+    UPDATE public.app_user SET role_id = sa_role
+    WHERE email = 'verify.admin@example.invalid'
+    RETURNING id INTO second_id;
+
+    UPDATE public.app_user SET role_id = admin_role WHERE id = sa_id;
+    UPDATE public.app_user SET role_id = sa_role WHERE id = sa_id;
+    UPDATE public.app_user SET is_blocked = TRUE WHERE id = sa_id;
+    DELETE FROM public.app_user WHERE id = sa_id;
+
+    -- The remaining Superadmin is now the last one and is protected again.
+    denied := FALSE;
+    BEGIN
+        DELETE FROM public.app_user WHERE id = second_id;
+    EXCEPTION WHEN restrict_violation THEN
+        denied := TRUE;
+    END;
+    IF NOT denied THEN
+        RAISE EXCEPTION 'Last Superadmin guard did not protect the remaining Superadmin';
     END IF;
 END;
 $$;
