@@ -62,3 +62,42 @@ WHERE expires_at <= CURRENT_TIMESTAMP OR used_at IS NOT NULL;
 Run `db/verification/password_reset_token_verification.sql` only against the disposable local/test database with the documented `auth.users` stub. It creates valid, expired, used, and blocked-user fixtures inside a transaction, reports each expected validity result, checks API-role access, and rolls everything back. Never run it against hosted Supabase Auth or Production.
 
 `008_protect_last_superadmin.sql` adds triggers on `app_user` and `role` that reject any change leaving no active, unblocked, approved Superadmin (including `service_role` writes).
+
+`009_protect_dashboard_module_data.sql` enables RLS and revokes direct API-role
+access to business tables and the effective-rights view. All module reads and
+writes must go through server code that verifies the authenticated user's
+module and action rights before using `service_role`. Apply this migration
+before exposing the dashboard; it intentionally disables any direct Supabase
+client access to those tables.
+
+`010_admin_implicit_effective_rights.sql` aligns the effective-rights view with
+the dashboard: approved, active Admins and Superadmins have all active rights
+implicitly; Users require active permission grants. Approval remains required
+and blocked accounts must still be denied separately by the server. Run
+`db/verification/user_management_verification.sql` only in a disposable local
+or test database with its documented Auth fixtures after applying migrations.
+The verification checks module-table RLS and API-role privileges as well as
+effective rights. Review role memberships, other exposed views and functions,
+and any existing policies separately in the target environment.
+
+For a disposable local PostgreSQL database only, provision the Auth stub in
+`db/README.md`, apply migrations in order, then run:
+
+```powershell
+psql -h localhost -U hope_app -d hope_dev -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql
+```
+
+Expected: every catalogue row reports `passed = true`, the assertion blocks
+complete without errors, and the fixture transaction ends with `ROLLBACK`.
+The checks cover approved, pending, rejected, inactive and blocked accounts,
+active and inactive grants, rights and modules, and API-role table privileges.
+The view deliberately retains `granted = true` for a blocked account with an
+active grant; server authorization must reject the blocked account separately.
+Also check inherited role memberships, alternate views and functions, RLS
+policies, sequences and existing foreign-key/audit triggers in the target test
+environment. These checks do not prove direct Supabase access is restricted
+until run against a representative database.
+
+Migrations are forward-only. If an applied migration needs correction, use a
+reviewed follow-up migration; recreating a disposable test database is the
+development recovery option, not a production rollback procedure.

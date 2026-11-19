@@ -37,7 +37,7 @@ export async function requireSuperadmin() {
   }
 
   const admin = createSupabaseAdminClient();
-  const access = await getAdminProvisioningAccess(admin, data.user.id);
+  const access = await getAdminProvisioningAccess(admin, data.user);
   if (access.status === "unavailable") {
     return {
       ok: false as const,

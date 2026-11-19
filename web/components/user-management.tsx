@@ -413,6 +413,7 @@ export function UserManagement({ actorRole }: { actorRole: "Admin" | "Superadmin
         </div>
       </footer>
 
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Preserve full-page navigation. */}
       <a className="um-back-link" href="/dashboard">Back to dashboard</a>
 
       {modal && (

@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   }
 
   const admin = createSupabaseAdminClient();
-  const access = await getAdminProvisioningAccess(admin, authData.user.id);
+  const access = await getAdminProvisioningAccess(admin, authData.user);
   if (access.status === "unavailable") {
     return NextResponse.json(
       { error: "Unable to verify administrator access. Please try again." },
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
   }
 
   const admin = createSupabaseAdminClient();
-  const access = await getAdminProvisioningAccess(admin, authData.user.id);
+  const access = await getAdminProvisioningAccess(admin, authData.user);
   if (access.status === "unavailable") {
     return NextResponse.json(
       { error: "Unable to verify Admin access. Please try again." },
