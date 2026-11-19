@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedRedirect } from "@/lib/auth-policy.mjs";
+import { loadDashboardAccess } from "@/lib/dashboard-access.mjs";
+import { hasRight, routeRequirement } from "@/lib/dashboard-policy.mjs";
 import {
   createSupabaseAdminClient,
   getSupabaseServerConfig,
@@ -26,12 +28,14 @@ function redirectWithCookies(
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const isApi = pathname.startsWith("/api/");
   const isLoginPage = pathname === "/login";
   const isPublicRegistrationPage = pathname === "/register";
   const config = getSupabaseServerConfig();
 
   if (!config) {
     if (isLoginPage || isPublicRegistrationPage) return NextResponse.next();
+    if (isApi) return NextResponse.json({ error: "Access verification is unavailable." }, { status: 503 });
     return NextResponse.redirect(
       new URL("/login?error=configuration", request.url)
     );
@@ -65,6 +69,7 @@ export async function proxy(request: NextRequest) {
     ) {
       return response;
     }
+    if (isApi) return copyCookies(response, NextResponse.json({ error: "Sign in required." }, { status: 401 }));
     return redirectWithCookies(request, response, "/login");
   }
 
@@ -84,6 +89,7 @@ export async function proxy(request: NextRequest) {
       code: profileError.code,
     });
     if (isLoginPage) return response;
+    if (isApi) return copyCookies(response, NextResponse.json({ error: "Access verification is unavailable." }, { status: 503 }));
     return new NextResponse("Unable to verify your account. Please try again.", {
       status: 503,
     });
@@ -102,10 +108,35 @@ export async function proxy(request: NextRequest) {
   if ("redirect" in decision && typeof decision.redirect === "string") {
     if (decision.redirect.startsWith("/login?")) {
       await supabase.auth.signOut({ scope: "local" });
+      if (isApi) return copyCookies(response, NextResponse.json({ error: "Sign in required." }, { status: 401 }));
       return redirectWithCookies(request, response, decision.redirect);
     }
 
+    if (isApi) return copyCookies(response, NextResponse.json({ error: "Account is not authorized." }, { status: 403 }));
     return redirectWithCookies(request, response, decision.redirect);
+  }
+
+  const requirement = routeRequirement(pathname, request.method);
+  const isUsers = pathname === "/dashboard/users" || pathname.startsWith("/dashboard/users/");
+  const isSettings = ["/dashboard/system-settings", "/api/system-settings"].some(
+    (base) => pathname === base || pathname.startsWith(`${base}/`)
+  );
+  if (requirement || isUsers || isSettings) {
+    const access = await loadDashboardAccess(admin, data.user.id);
+    if (access.status === "unavailable") {
+      return isApi
+        ? copyCookies(response, NextResponse.json({ error: "Access verification is unavailable." }, { status: 503 }))
+        : new NextResponse("Unable to verify your access. Please try again.", { status: 503 });
+    }
+    const allowed = access.status === "ok" && (
+      requirement ? !requirement.unsupported && hasRight(access, requirement.module) :
+      isUsers ? access.role !== "User" : access.role === "Superadmin"
+    );
+    if (!allowed) {
+      return isApi
+        ? copyCookies(response, NextResponse.json({ error: "No access." }, { status: 403 }))
+        : redirectWithCookies(request, response, "/no-access");
+    }
   }
 
   return response;
@@ -120,6 +151,12 @@ export const config = {
     "/auth/recovery-callback",
     "/approval-pending",
     "/dashboard/:path*",
+    "/api/customers/:path*",
+    "/api/products/:path*",
+    "/api/human-resources/:path*",
+    "/api/sales/:path*",
+    "/api/reports/:path*",
+    "/api/system-settings/:path*",
     "/set-password",
     "/reset-password",
   ],

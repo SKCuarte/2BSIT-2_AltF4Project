@@ -13,7 +13,18 @@ export function generateTemporaryPassword() {
   return randomBytes(24).toString("base64url");
 }
 
-export async function getAdminProvisioningAccess(admin, authUserId) {
+/** @param {{ id: string, app_metadata: Record<string, unknown> }} authUser */
+export async function getAdminProvisioningAccess(admin, authUser) {
+  if (!authUser || typeof authUser.id !== "string" ||
+      !authUser.app_metadata || typeof authUser.app_metadata !== "object" ||
+      Array.isArray(authUser.app_metadata)) {
+    console.error("Admin provisioning Auth user metadata is unavailable.");
+    return { status: "unavailable" };
+  }
+  if (authUser.app_metadata[MUST_CHANGE_PASSWORD_KEY] === true) {
+    return { status: "forbidden" };
+  }
+
   const roleSchema = await findAppUserRoleColumn(admin);
   if (roleSchema.error || !roleSchema.roleColumn) {
     console.error("Admin provisioning role schema lookup failed:", {
@@ -39,7 +50,7 @@ export async function getAdminProvisioningAccess(admin, authUserId) {
     .select(
       `${roleSchema.roleColumn}, is_blocked, approval_status${statusColumn ? ", status" : ""}`
     )
-    .eq("auth_user_id", authUserId)
+    .eq("auth_user_id", authUser.id)
     .maybeSingle();
 
   if (accountError) {

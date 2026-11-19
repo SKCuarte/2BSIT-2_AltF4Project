@@ -45,7 +45,7 @@ export async function PATCH(
   }
 
   const admin = createSupabaseAdminClient();
-  const access = await getAdminProvisioningAccess(admin, authData.user.id);
+  const access = await getAdminProvisioningAccess(admin, authData.user);
   if (access.status === "unavailable") {
     return NextResponse.json(
       { error: "Unable to verify administrator access. Please try again." },

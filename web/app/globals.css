@@ -596,6 +596,43 @@ a:focus-visible {
   gap: 20px;
 }
 
+.dashboard-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+}
+
+.dashboard-tile {
+  display: flex;
+  min-height: 135px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: white;
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.dashboard-tile:hover {
+  border-color: var(--accent);
+}
+
+.dashboard-tile small {
+  margin-top: auto;
+  color: var(--accent);
+}
+
+.dashboard-tile-disabled {
+  background: var(--soft);
+  color: var(--muted);
+}
+
+.dashboard-tile-disabled small {
+  color: var(--muted);
+}
+
 .um-welcome {
   position: relative;
   overflow: hidden;
