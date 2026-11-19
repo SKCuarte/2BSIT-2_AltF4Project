@@ -7,7 +7,7 @@
 
 ## Scope and evidence
 
-The review uses the supplied branch `S1-UIX-05]-Usability-review-of-built-screens-and-fix-list` at commit `23b40a1` (`Updated hi-fi wireframe`). The previously named `feature/S1-UIX-05]-repo_setup` branch is not present.
+The review uses the supplied branch `S1-UIX-05]-Usability-review-of-built-screens-and-fix-list` at commit `23b40a1` (`Updated hi-fi wireframe`). Audit report and visual assets committed on branch feature/S1-UIX-05]-repo_setup.
 
 The audited screens were rendered from `../Hope, Inc (ui-ux)/index.html` with its branch-matched CSS and JavaScript. The preview README identifies it as a static demo using sample data and browser storage, not the production API/authentication service. The Next app under `../web/app` presents registration at its root. This report treats the supplied UIX-05 branch preview as the audit build; it does not claim a review of a separately deployed production environment.
 
