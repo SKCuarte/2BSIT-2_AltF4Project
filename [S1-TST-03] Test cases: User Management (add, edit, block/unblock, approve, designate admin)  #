@@ -1,0 +1,24 @@
+# S1-TST-03: User Management Test Report
+
+**Tester:** Joshua Morning Lazaro
+**Date:** November 21, 2026
+**Environment:** Local Development (`http://localhost:3001`)
+**Branch:** `feature/S1-DEV-05-user-management`
+
+## Objective
+To verify Admin and Superadmin user management functions, visibility limits, and role safety guardrails.
+
+## Test Cases Executed
+
+| Test ID | Description | Expected Result | Actual Result | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **TC-01** | Add User | System successfully creates a new user | New user appears in the User Management table | PASS |
+| **TC-02** | Edit User | Admin can update user details (name, role) | Changes save successfully to the database | PASS |
+| **TC-03** | Block/Unblock User | Toggling block prevents user from logging in | `is_blocked` status updates correctly | PASS |
+| **TC-04** | Superadmin Approval | Change user status from Pending to Approved | User status updates to Approved in DB | PASS |
+| **TC-05** | Designate Admin | Promote a standard User to Admin role | User role updates and they get Admin access | PASS |
+| **TC-06** | Guardrail 1 | Admin accounts cannot view/edit Superadmin accounts | Superadmin accounts are hidden/protected from Admins | PASS |
+| **TC-07** | Guardrail 2 | System blocks deleting/demoting/blocking last Superadmin | System successfully blocked the action with an error | PASS |
+
+## Bugs Found
+- None found during testing. All systems functional.
