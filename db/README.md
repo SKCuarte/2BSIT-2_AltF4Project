@@ -96,12 +96,12 @@ Expected: psql reports `CREATE ROLE`, `CREATE DATABASE`, and `GRANT`; `\password
    ```text
    npm run db:migrate
    ```
-   Expected: all six migrations are reported as applied and recorded in `public.schema_migrations`, in filename order.
+   Expected: migrations `001` through `009` are reported as applied and recorded in `public.schema_migrations`, in filename order.
 4. Confirm migration status:
    ```text
    npm run db:status
    ```
-   Expected: all six migrations are `APPLIED`, including `004_supabase_auth_profiles.sql`, `005_gate_rights_by_approval.sql`, and `006_lock_down_user_management_api_access.sql`.
+   Expected: migrations `001` through `009` are `APPLIED`, including `009_active_customer_product_views.sql`.
 5. Run repeatable seed scripts:
    ```text
    npm run db:seed
