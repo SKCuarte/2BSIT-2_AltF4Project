@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getAdminProvisioningAccess } from "@/lib/admin-provisioning.mjs";
 import { loadManagedUserRights } from "@/lib/rights-management.mjs";
-import { getRightsWritePolicyDecision } from "@/lib/rights-management-policy.mjs";
+
 import {
   saveManagedUserRights,
   validateRightsSelection,
@@ -111,21 +111,6 @@ export async function POST(
   }
 
   const { id: targetId } = await params;
-  const policy = getRightsWritePolicyDecision({
-    actorRole: access.roleName,
-    targetId,
-    rightIds: selection.rightIds,
-  });
-  if (!policy.allowed) {
-    return NextResponse.json(
-      {
-        error: "Rights changes are disabled pending Project Owner authorization-policy approval.",
-        code: policy.code,
-      },
-      { status: 409, headers: { "Cache-Control": "no-store" } }
-    );
-  }
-
   const { data: actor, error: actorError } = await admin
     .from("app_user")
     .select("id")
@@ -140,13 +125,36 @@ export async function POST(
 
   const result = await saveManagedUserRights(
     admin,
+    access.roleName,
     String(actor.id),
     targetId,
     selection.rightIds
   );
-  if (result.status !== "ok") {
-    console.error("Rights change transaction failed:", { code: result.code });
-    return NextResponse.json({ error: "Unable to save permissions. Please try again." }, { status: 503 });
+
+  if (
+    result.status !== "ok" ||
+    !("changedCount" in result) ||
+    typeof result.changedCount !== "number" ||
+    !Number.isSafeInteger(result.changedCount) ||
+    result.changedCount < 0
+  ) {
+    const errorCode =
+      "code" in result && typeof result.code === "string"
+        ? result.code
+        : result.status;
+
+    console.error("Rights change transaction failed:", {
+      code: errorCode,
+    });
+
+    return NextResponse.json(
+      { error: "Unable to save permissions. Please try again." },
+      { status: 503 }
+    );
   }
-  return NextResponse.json({ ok: true, changedCount: result.changedCount });
+
+  return NextResponse.json({
+    ok: true,
+    changedCount: result.changedCount,
+  });
 }

@@ -7,6 +7,7 @@ function normalizeApprovalStatus(value) {
 export function getProfileAccessIssue(profile) {
   if (!profile) return "profile_missing";
   if (profile.is_blocked) return "blocked";
+  if (profile.status !== "Active") return "inactive";
   const approvalStatus = normalizeApprovalStatus(profile.approval_status);
   if (approvalStatus === "rejected") return "rejected";
   if (approvalStatus !== "approved") return "pending";

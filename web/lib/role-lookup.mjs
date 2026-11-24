@@ -23,6 +23,22 @@ export async function findAppUserRoleColumn(admin) {
   }
 }
 
+export async function findAuthorizationAccount(admin, authUserId) {
+  const load = (roleColumn) => admin.from("app_user")
+      .select(`id, ${roleColumn}, is_blocked, approval_status, status`)
+      .eq("auth_user_id", authUserId)
+      .maybeSingle();
+  const primary = await load("role_id");
+  if (!primary.error) return { account: primary.data, roleColumn: "role_id", error: null };
+  if (primary.error.code !== "42703") {
+    return { account: null, roleColumn: null, error: primary.error };
+  }
+  const fallback = await load("role");
+  return fallback.error
+    ? { account: null, roleColumn: null, error: fallback.error }
+    : { account: fallback.data, roleColumn: "role", error: null };
+}
+
 export async function findActiveRoleId(admin, roleName) {
   const { data, error } = await admin
     .from("role")

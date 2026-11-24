@@ -1,9 +1,48 @@
 -- Run after all migrations in a clean local/test database with auth.users fixtures
 -- provisioned separately. CI uses a minimal auth.users stub; never insert test IDs
 -- directly into a shared or production Supabase Auth schema.
+-- This targets the repository 003/004 baseline (BIGINT application IDs and a
+-- UUID Auth ID), not the separately reported UUID-based live application schema.
 -- Expected catalogue: 3 roles, 5 modules, 36 rights, and the module counts below.
 -- The transaction rolls back its temporary user and permission fixtures.
+-- Identity-sequence increments are not rolled back; never use a shared database.
 BEGIN;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM (VALUES
+            ('public.app_user', 'id', 'bigint'::regtype),
+            ('public.app_user', 'role_id', 'bigint'::regtype),
+            ('public.app_user', 'auth_user_id', 'uuid'::regtype),
+            ('public.role', 'id', 'bigint'::regtype),
+            ('public.module', 'id', 'bigint'::regtype),
+            ('public.rights', 'id', 'bigint'::regtype),
+            ('public.rights', 'module_id', 'bigint'::regtype),
+            ('public.user_permission', 'user_id', 'bigint'::regtype),
+            ('public.user_permission', 'right_id', 'bigint'::regtype),
+            ('public.user_permission', 'granted_by', 'bigint'::regtype)
+        ) AS expected(table_name, column_name, column_type)
+        LEFT JOIN pg_attribute actual
+            ON actual.attrelid = to_regclass(expected.table_name)
+           AND actual.attname = expected.column_name
+           AND actual.attnum > 0 AND NOT actual.attisdropped
+        WHERE actual.atttypid IS DISTINCT FROM expected.column_type
+    ) THEN
+        RAISE EXCEPTION 'Verification requires the repository 003/004 ID types; do not run it on the UUID live application schema';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM public.app_user account
+        JOIN public.role account_role ON account_role.id = account.role_id
+        WHERE account_role.name = 'Superadmin' AND account_role.status = 'Active'
+          AND account.status = 'Active' AND account.approval_status = 'Approved'
+          AND NOT account.is_blocked
+    ) THEN
+        RAISE EXCEPTION 'Verification requires a clean disposable database without existing eligible Superadmins';
+    END IF;
+END;
+$$;
 
 SELECT 'role' AS catalogue, 3 AS expected_count, COUNT(*) AS actual_count,
        COUNT(*) = 3 AS passed
@@ -13,17 +52,17 @@ SELECT 'module', 5, COUNT(*), COUNT(*) = 5 FROM public.module
 UNION ALL
 SELECT 'rights', 36, COUNT(*), COUNT(*) = 36 FROM public.rights;
 
-SELECT module_name, rights_count AS actual_count, expected_count,
-       rights_count = expected_count AS passed
-FROM public.v_rights_count_by_module
-JOIN (VALUES
+SELECT expected.module_name, actual.rights_count AS actual_count, expected.expected_count,
+       actual.rights_count IS NOT DISTINCT FROM expected.expected_count AS passed
+FROM (VALUES
     ('Customer', 3),
     ('Product', 6),
     ('Human Resources', 13),
     ('Sales', 7),
     ('Reports', 7)
-) AS expected(module_name, expected_count) USING (module_name)
-ORDER BY module_name;
+) AS expected(module_name, expected_count)
+LEFT JOIN public.v_rights_count_by_module actual USING (module_name)
+ORDER BY expected.module_name;
 
 DO $$
 DECLARE
@@ -60,15 +99,16 @@ BEGIN
         OR NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.user_permission'::regclass) THEN
         RAISE EXCEPTION 'RLS must be enabled for app_user and user_permission';
     END IF;
-    FOREACH public_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
-        IF has_table_privilege(public_role, 'public.app_user', 'INSERT')
-            OR has_table_privilege(public_role, 'public.app_user', 'UPDATE')
-            OR has_table_privilege(public_role, 'public.app_user', 'DELETE')
-            OR has_table_privilege(public_role, 'public.user_permission', 'INSERT')
-            OR has_table_privilege(public_role, 'public.user_permission', 'UPDATE')
-            OR has_table_privilege(public_role, 'public.user_permission', 'DELETE') THEN
-            RAISE EXCEPTION 'Public API role % can modify protected user-management tables', public_role;
-        END IF;
+    FOREACH protected_table IN ARRAY ARRAY['public.app_user', 'public.user_permission'] LOOP
+        FOREACH public_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+            FOREACH privilege_name IN ARRAY ARRAY[
+                'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'
+            ] LOOP
+                IF has_table_privilege(public_role, protected_table, privilege_name) THEN
+                    RAISE EXCEPTION 'Public API role % has % on %', public_role, privilege_name, protected_table;
+                END IF;
+            END LOOP;
+        END LOOP;
     END LOOP;
     FOREACH protected_table IN ARRAY ARRAY[
         'public."CUSTOMER"', 'public."PRODUCT"', 'public."PRICEHIST"',
@@ -106,12 +146,12 @@ BEGIN
         RAISE EXCEPTION 'Server service_role must retain app_user write and identity-sequence access';
     END IF;
     IF EXISTS (
-        SELECT 1 FROM public.v_rights_count_by_module
-        JOIN (VALUES
+        SELECT 1 FROM (VALUES
             ('Customer', 3), ('Product', 6), ('Human Resources', 13),
             ('Sales', 7), ('Reports', 7)
-        ) AS expected(module_name, expected_count) USING (module_name)
-        WHERE rights_count <> expected_count
+        ) AS expected(module_name, expected_count)
+        LEFT JOIN public.v_rights_count_by_module actual USING (module_name)
+        WHERE actual.rights_count IS DISTINCT FROM expected.expected_count
     ) THEN
         RAISE EXCEPTION 'Rights-per-module counts do not match the guide';
     END IF;

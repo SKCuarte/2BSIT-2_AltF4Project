@@ -1,9 +1,16 @@
+
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { getProfileAccessIssue, MUST_CHANGE_PASSWORD_KEY } from "@/lib/auth-policy.mjs";
-import { activateApprovedManualRegistration } from "@/lib/manual-registration.mjs";
-import { createSupabaseAdminClient, getSupabaseServerConfig } from "@/lib/supabase-admin";
+import {
+  getProfileAccessIssue,
+  MUST_CHANGE_PASSWORD_KEY,
+} from "@/lib/auth-policy.mjs";
+import { withPasswordSetupReservation } from "@/lib/password-setup-reservation.mjs";
+import {
+  createSupabaseAdminClient,
+  getSupabaseServerConfig,
+} from "@/lib/supabase-admin";
 import {
   REGISTRATION_CLAIM_COOKIE,
   verifyRegistrationClaim,
@@ -11,10 +18,14 @@ import {
 
 export async function POST(request: Request) {
   let body: unknown;
+
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid password update request." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid password update request." },
+      { status: 400 }
+    );
   }
 
   if (
@@ -24,10 +35,14 @@ export async function POST(request: Request) {
     !("password" in body) ||
     typeof body.password !== "string"
   ) {
-    return NextResponse.json({ error: "Enter a new password." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Enter a new password." },
+      { status: 400 }
+    );
   }
 
   const password = body.password;
+
   if (password.length < 8 || password.length > 128) {
     return NextResponse.json(
       { error: "Your new password must be between 8 and 128 characters." },
@@ -36,6 +51,7 @@ export async function POST(request: Request) {
   }
 
   const config = getSupabaseServerConfig();
+
   if (!config) {
     console.error("Supabase authentication configuration is incomplete.");
     return NextResponse.json(
@@ -45,6 +61,7 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies();
+
   const supabase = createServerClient(config.url, config.anonKey, {
     cookies: {
       getAll: () => cookieStore.getAll(),
@@ -60,13 +77,15 @@ export async function POST(request: Request) {
     cookieStore.get(REGISTRATION_CLAIM_COOKIE)?.value,
     config.serviceRoleKey
   );
+
   const admin = createSupabaseAdminClient();
 
+  // Registration claim password setup
   if (registrationClaim) {
     const { data: registrationProfile, error: registrationProfileError } =
       await admin
         .from("app_user")
-        .select("auth_user_id, is_blocked, approval_status")
+        .select("auth_user_id, is_blocked, approval_status, status")
         .eq("auth_user_id", registrationClaim)
         .maybeSingle();
 
@@ -74,6 +93,7 @@ export async function POST(request: Request) {
       console.error("Registration password profile lookup failed:", {
         code: registrationProfileError.code,
       });
+
       return NextResponse.json(
         { error: "Unable to verify your registration. Please try again." },
         { status: 503 }
@@ -82,6 +102,7 @@ export async function POST(request: Request) {
 
     const registrationAccessIssue =
       getProfileAccessIssue(registrationProfile);
+
     if (registrationAccessIssue) {
       return NextResponse.json(
         {
@@ -96,6 +117,7 @@ export async function POST(request: Request) {
 
     const { data: registrationAuth, error: registrationAuthError } =
       await admin.auth.admin.getUserById(registrationClaim);
+
     if (
       registrationAuthError ||
       !registrationAuth.user ||
@@ -104,34 +126,46 @@ export async function POST(request: Request) {
       console.error("Registration password Auth lookup failed:", {
         code: registrationAuthError?.status ?? "password_setup_not_required",
       });
+
       return NextResponse.json(
-        { error: "This account cannot set a password. Contact the administrator." },
+        {
+          error:
+            "This account cannot set a password. Contact the administrator.",
+        },
         { status: 409 }
       );
     }
 
-    const { error: registrationPasswordError } =
-      await admin.auth.admin.updateUserById(registrationClaim, {
-        password,
-        app_metadata: {
-          ...registrationAuth.user.app_metadata,
-          [MUST_CHANGE_PASSWORD_KEY]: false,
-        },
-      });
-    if (registrationPasswordError) {
-      console.error("Registration password update failed:", {
-        authUserId: registrationClaim,
-        code: registrationPasswordError.status ?? "password_update_failed",
-      });
+    const registrationPasswordResult = await withPasswordSetupReservation(
+      admin,
+      registrationClaim,
+      () =>
+        admin.auth.admin.updateUserById(registrationClaim, {
+          password,
+          app_metadata: {
+            ...registrationAuth.user.app_metadata,
+            [MUST_CHANGE_PASSWORD_KEY]: false,
+          },
+        })
+    );
+
+    if (registrationPasswordResult !== "ok") {
       return NextResponse.json(
-        { error: "Unable to set your password. Please try again." },
-        { status: 400 }
+        {
+          error:
+            "Unable to complete password setup. Contact the administrator.",
+        },
+        {
+          status:
+            registrationPasswordResult === "ineligible" ? 403 : 503,
+        }
       );
     }
 
     const response = NextResponse.json({
       redirect: "/login?notice=password_set",
     });
+
     response.cookies.set(REGISTRATION_CLAIM_COOKIE, "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -139,10 +173,14 @@ export async function POST(request: Request) {
       path: "/",
       maxAge: 0,
     });
+
     return response;
   }
 
-  const { data: authData, error: authError } = await supabase.auth.getUser();
+  // Normal authenticated password setup
+  const { data: authData, error: authError } =
+    await supabase.auth.getUser();
+
   if (authError || !authData.user) {
     return NextResponse.json(
       { error: "Your session expired. Sign in again to continue." },
@@ -150,40 +188,49 @@ export async function POST(request: Request) {
     );
   }
 
+  if (authData.user.is_anonymous === true) {
+    return NextResponse.json(
+      {
+        error:
+          "This older registration requires email verification. Contact the administrator.",
+      },
+      { status: 403 }
+    );
+  }
+
   const { data: profile, error: profileError } = await admin
     .from("app_user")
-    .select("auth_user_id, first_name, last_name, email, is_blocked, approval_status")
+    .select(
+      "auth_user_id, first_name, last_name, email, is_blocked, approval_status, status"
+    )
     .eq("auth_user_id", authData.user.id)
     .maybeSingle();
 
   if (profileError) {
-    console.error("Password setup profile lookup failed:", { code: profileError.code });
+    console.error("Password setup profile lookup failed:", {
+      code: profileError.code,
+    });
+
     return NextResponse.json(
       { error: "Unable to verify your account. Please try again." },
       { status: 503 }
     );
   }
 
-  const { data: adminUser, error: adminLookupError } =
-    await admin.auth.admin.getUserById(authData.user.id);
-  if (adminLookupError || !adminUser.user) {
-    console.error("Password setup Auth lookup failed:", {
-      code: adminLookupError?.status ?? "user_not_found",
-    });
+  if (!profile) {
     return NextResponse.json(
-      { error: "Unable to verify password setup. Please try again." },
-      { status: 503 }
+      { error: "This account is not eligible to set a password." },
+      { status: 403 }
     );
   }
 
-  const hasFirstLoginMarker =
-    adminUser.user.app_metadata?.[MUST_CHANGE_PASSWORD_KEY] === true;
   const accessIssue = getProfileAccessIssue(profile);
 
   if (accessIssue) {
     if (accessIssue !== "pending") {
       await supabase.auth.signOut({ scope: "local" });
     }
+
     return NextResponse.json(
       {
         error:
@@ -195,12 +242,22 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!profile) {
+  const { data: adminUser, error: adminLookupError } =
+    await admin.auth.admin.getUserById(authData.user.id);
+
+  if (adminLookupError || !adminUser.user) {
+    console.error("Password setup Auth lookup failed:", {
+      code: adminLookupError?.status ?? "user_not_found",
+    });
+
     return NextResponse.json(
-      { error: "This account is not eligible to set a password." },
-      { status: 403 }
+      { error: "Unable to verify password setup. Please try again." },
+      { status: 503 }
     );
   }
+
+  const hasFirstLoginMarker =
+    adminUser.user.app_metadata?.[MUST_CHANGE_PASSWORD_KEY] === true;
 
   if (!hasFirstLoginMarker) {
     return NextResponse.json(
@@ -209,105 +266,78 @@ export async function POST(request: Request) {
     );
   }
 
-  const isManualRegistration = authData.user.is_anonymous === true;
-  if (isManualRegistration) {
-    if (
-      typeof profile.email !== "string" ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)
-    ) {
-      console.error("Approved manual registration has an invalid email.", {
-        authUserId: authData.user.id,
-      });
-      return NextResponse.json(
-        {
-          error:
-            "Unable to activate the approved email. Contact the administrator.",
-        },
-        { status: 503 }
-      );
-    }
+  // Keep both Auth updates inside the same reservation.
+  const passwordResult = await withPasswordSetupReservation(
+    admin,
+    authData.user.id,
+    async () => {
+      const passwordUpdate = await supabase.auth.updateUser({ password });
 
-    const activation = await activateApprovedManualRegistration(
+      if (
+        passwordUpdate.error ||
+        passwordUpdate.data?.user?.id !== authData.user.id
+      ) {
+        return {
+          error:
+            passwordUpdate.error ??
+            new Error("Unexpected password update response"),
+        };
+      }
+
+      const markerUpdate = await admin.auth.admin.updateUserById(
+        authData.user.id,
+        {
+          app_metadata: {
+            ...adminUser.user.app_metadata,
+            [MUST_CHANGE_PASSWORD_KEY]: false,
+          },
+        }
+      );
+
+      if (
+        markerUpdate.error ||
+        markerUpdate.data?.user?.id !== authData.user.id
+      ) {
+        return {
+          error:
+            markerUpdate.error ??
+            new Error("Unexpected marker update response"),
+        };
+      }
+
+      return {
+        data: { user: { id: authData.user.id } },
+        error: null,
+      };
+    }
+  );
+
+  if (passwordResult !== "ok") {
+    return NextResponse.json(
       {
-        authUserId: authData.user.id,
-        email: profile.email,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
-        password,
+        error:
+          "Unable to complete password setup. Contact the administrator.",
       },
       {
-        createUser: async (newUser) => {
-          const { data, error } = await admin.auth.admin.createUser(newUser);
-          return { user: data.user, error };
-        },
-        moveProfile: async (oldId, newId) => {
-          const { data, error } = await admin
-            .from("app_user")
-            .update({ auth_user_id: newId })
-            .eq("auth_user_id", oldId)
-            .ilike("approval_status", "approved")
-            .select("auth_user_id")
-            .maybeSingle();
-          return { moved: Boolean(data), error };
-        },
-        deleteAuthUser: async (id) => {
-          const { error } = await admin.auth.admin.deleteUser(id);
-          return { error };
-        },
-        logError: (event, details) => {
-          console.error(event, {
-            authUserId: authData.user.id,
-            ...details,
-          });
-        },
+        status: passwordResult === "ineligible" ? 403 : 503,
       }
     );
-    if (!activation.ok) {
-      return NextResponse.json(
-        { error: activation.error },
-        { status: activation.status }
-      );
-    }
-  } else {
-    const { error: passwordError } = await supabase.auth.updateUser({ password });
-    if (passwordError) {
-      return NextResponse.json(
-        { error: "Unable to update your password. Check the password and try again." },
-        { status: 400 }
-      );
-    }
-
-    const { error: markerError } = await admin.auth.admin.updateUserById(
-      authData.user.id,
-      {
-        app_metadata: {
-          ...adminUser.user.app_metadata,
-          [MUST_CHANGE_PASSWORD_KEY]: false,
-        },
-      }
-    );
-
-    if (markerError) {
-      console.error("Password changed but first-login marker could not be cleared:", {
-        authUserId: authData.user.id,
-        code: markerError.status ?? "marker_update_failed",
-      });
-      return NextResponse.json(
-        {
-          error:
-            "Your password was changed, but account setup could not be completed. Retry password setup or contact the administrator.",
-        },
-        { status: 503 }
-      );
-    }
   }
 
-  const { error: signOutError } = await supabase.auth.signOut({ scope: "local" });
+  // Clear the local session after successful password setup.
+  const { error: signOutError } = await supabase.auth.signOut({
+    scope: "local",
+  });
+
   if (signOutError) {
-    console.error("Password changed but the first-login session could not be cleared:", {
-      authUserId: authData.user.id,
-      code: signOutError.status ?? "session_sign_out_failed",
-    });
+    console.error(
+      "Password changed but the first-login session could not be cleared:",
+      {
+        authUserId: authData.user.id,
+        code: signOutError.status ?? "session_sign_out_failed",
+      }
+    );
+
     return NextResponse.json(
       {
         error:
@@ -317,5 +347,7 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ redirect: "/login?notice=password_set" });
+  return NextResponse.json({
+    redirect: "/login?notice=password_set",
+  });
 }

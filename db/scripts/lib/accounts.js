@@ -31,28 +31,43 @@ function required(name) {
   return value;
 }
 
-function isDevHost() {
-  const host = required('DB_HOST').toLowerCase();
+function isDevHost(host = databaseTarget().host) {
   const allowed = new Set(
     (process.env.DB_ALLOWED_DEV_HOSTS || '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean),
   );
   return localHosts.has(host) || allowed.has(host);
 }
 
+function databaseTarget() {
+  if (process.env.DATABASE_URL) {
+    const client = new Client({ connectionString: process.env.DATABASE_URL });
+    return { host: client.host.toLowerCase(), database: client.database, user: client.user };
+  }
+  return {
+    host: required('DB_HOST').toLowerCase(),
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+  };
+}
+
 function assertDevOnly(action) {
   if (process.env.DB_ENV !== 'development') {
     throw new Error(`${action} refused: set DB_ENV=development in .env.`);
   }
-  if (!isDevHost()) {
-    throw new Error(`${action} refused: host ${process.env.DB_HOST} is not localhost or listed in DB_ALLOWED_DEV_HOSTS.`);
+  const target = databaseTarget();
+  if (!isDevHost(target.host)) {
+    throw new Error(`${action} refused: the database connection host is not localhost or listed in DB_ALLOWED_DEV_HOSTS.`);
+  }
+  if (!localHosts.has(target.host) &&
+      (!target.database || !target.user ||
+       process.env.DB_CONFIRM_DEV_PROJECT !== `${target.host}/${target.database}/${target.user}`)) {
+    throw new Error(`${action} refused: set DB_CONFIRM_DEV_PROJECT to the exact remote host/database/user DEV target.`);
   }
 }
 
 async function connect() {
   const connectionString = process.env.DATABASE_URL;
-  const databaseHost = connectionString
-    ? new URL(connectionString).hostname.toLowerCase()
-    : required('DB_HOST').toLowerCase();
+  const host = databaseTarget().host;
   const clientConfig = connectionString
     ? { connectionString }
     : {
@@ -63,7 +78,7 @@ async function connect() {
         password: required('DB_PASSWORD'),
       };
 
-  if (!localHosts.has(databaseHost) || process.env.DB_SSL === 'true' || process.env.DATABASE_SSL === 'true') {
+  if (!localHosts.has(host) || process.env.DB_SSL === 'true' || process.env.DATABASE_SSL === 'true') {
     clientConfig.ssl = { rejectUnauthorized: true };
     if (process.env.DATABASE_SSL_ROOT_CERT) {
       clientConfig.ssl.ca = await fs.readFile(path.resolve(root, process.env.DATABASE_SSL_ROOT_CERT), 'utf8');
@@ -71,17 +86,35 @@ async function connect() {
   }
   clientConfig.connectionTimeoutMillis = 10000;
 
-  if (selectedEnvFile && connectionString) {
-    const databaseUrl = new URL(connectionString);
-    const projectRef = new URL(required('SUPABASE_URL')).hostname.split('.')[0];
-    const databaseMatchesProject = databaseUrl.hostname === `db.${projectRef}.supabase.co`
-      || decodeURIComponent(databaseUrl.username).endsWith(`.${projectRef}`);
+  const client = new Client(clientConfig);
+  const api = authApi();
+  if (selectedEnvFile || api) {
+    const apiUrl = new URL(required('SUPABASE_URL'));
+    const apiHost = apiUrl.hostname.toLowerCase();
+    const databaseHost = client.host.toLowerCase();
+    if (!localHosts.has(apiHost) && apiUrl.protocol !== 'https:') {
+      throw new Error('Remote Supabase Auth API connections require HTTPS.');
+    }
+    const project = /^([a-z0-9]+)\.supabase\.co$/.exec(apiHost);
+    const databaseMatchesProject = (localHosts.has(apiHost) && localHosts.has(databaseHost))
+      || (project && (databaseHost === `db.${project[1]}.supabase.co`
+          || (databaseHost.endsWith('.pooler.supabase.com')
+              && typeof client.user === 'string' && client.user.endsWith(`.${project[1]}`))));
     if (!databaseMatchesProject) {
-      throw new Error('DATABASE_URL and SUPABASE_URL must point to the same Supabase project.');
+      throw new Error('Database connection and SUPABASE_URL must point to the same Supabase project.');
     }
   }
 
-  const client = new Client(clientConfig);
+  if (!localHosts.has(client.host.toLowerCase())) {
+    const ssl = client.ssl;
+    if (!ssl || (ssl !== true && typeof ssl !== 'object') ||
+        (typeof ssl === 'object' && (ssl.rejectUnauthorized === false || typeof ssl.checkServerIdentity === 'function')) ||
+        (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0' &&
+         (ssl === true || ssl.rejectUnauthorized !== true))) {
+      throw new Error('Remote database connections require certificate-verified TLS.');
+    }
+  }
+
   await client.connect();
   return client;
 }
@@ -129,6 +162,18 @@ function authApi() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return null;
+  const apiUrl = new URL(url);
+  if (!['http:', 'https:'].includes(apiUrl.protocol)) {
+    throw new Error('Supabase Auth API URL must use HTTP or HTTPS.');
+  }
+  if (!localHosts.has(apiUrl.hostname.toLowerCase())) {
+    if (apiUrl.protocol !== 'https:') {
+      throw new Error('Remote Supabase Auth API connections require HTTPS.');
+    }
+    if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') {
+      throw new Error('Remote Supabase Auth API connections require certificate verification.');
+    }
+  }
   const headers = { apikey: key, 'Content-Type': 'application/json' };
   if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`;
   return { base: url.replace(/\/+$/, ''), headers };
@@ -220,4 +265,4 @@ async function ensureAppUser(client, { firstName, lastName, email, roleName }) {
   return { created: true, id: inserted.rows[0].id, roleName };
 }
 
-module.exports = { assertDevOnly, connect, ensureAppUser, isDevHost, readTeamFile, required, root };
+module.exports = { assertDevOnly, authApi, connect, ensureAppUser, isDevHost, readTeamFile, required, root };

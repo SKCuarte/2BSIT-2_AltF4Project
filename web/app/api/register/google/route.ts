@@ -127,7 +127,7 @@ export async function POST(request: Request) {
   const email = authData.user.email?.trim().toLowerCase();
   const { firstName, lastName } = getNameParts(authData.user);
 
-  if (!email || !firstName || !lastName) {
+  if (!email || !firstName || !lastName || !authData.user.email_confirmed_at) {
     return NextResponse.json(
       {
         error:
@@ -144,6 +144,7 @@ export async function POST(request: Request) {
       first_name: firstName,
       last_name: lastName,
       email,
+      email_verified_at: authData.user.email_confirmed_at,
       approval_status: "Pending",
     })
     .select("approval_status")

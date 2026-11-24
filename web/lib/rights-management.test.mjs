@@ -30,7 +30,17 @@ function mockAdmin(responses) {
         order() { return query; },
         range(start, end) { call.range = [start, end]; return query; },
         maybeSingle() { return Promise.resolve(responses.shift()); },
-        then(resolve, reject) { return Promise.resolve(responses.shift()).then(resolve, reject); },
+        then(resolve, reject) {
+          const response = responses.shift() ?? { data: null, error: { code: "failure" }, count: 0 };
+          if (
+            ["module", "rights"].includes(table) &&
+            Array.isArray(response?.data) &&
+            !Object.hasOwn(response, "count")
+          ) {
+            response.count = response.data.length;
+          }
+          return Promise.resolve(response).then(resolve, reject);
+        },
       };
       return query;
     },
@@ -222,32 +232,95 @@ test("fails closed on duplicate active assignments and selections outside the ca
   assert.deepEqual(planRightsChanges(["1"], [], ["2"]), { status: "invalid" });
 });
 
-test("Admin and Superadmin write attempts remain denied pending Project Owner approval", async () => {
-  const decisions = await Promise.all([
-    Promise.resolve(getRightsWritePolicyDecision({ actorRole: "Admin", targetRole: "User" })),
-    Promise.resolve(getRightsWritePolicyDecision({ actorRole: "Superadmin", targetRole: "Admin" })),
-  ]);
-  assert.deepEqual(decisions, [
-    { allowed: false, code: "policy_pending" },
-    { allowed: false, code: "policy_pending" },
-  ]);
+test("Admin can manage Users and Superadmin can manage Admins", () => {
+  assert.deepEqual(
+    getRightsWritePolicyDecision({ actorRole: "Admin", targetRole: "User" }),
+    { allowed: true, code: "allowed" }
+  );
+  assert.deepEqual(
+    getRightsWritePolicyDecision({ actorRole: "Superadmin", targetRole: "Admin" }),
+    { allowed: true, code: "allowed" }
+  );
 });
 
-test("concurrent write attempts never call the RPC while policy approval is pending", async () => {
-  let callCount = 0;
-  const admin = {
-    async rpc() {
-      callCount += 1;
-      return { data: 2, error: null };
-    },
+test("protected and unauthorized roles cannot be managed", () => {
+  assert.deepEqual(
+    getRightsWritePolicyDecision({ actorRole: "Admin", targetRole: "Superadmin" }),
+    { allowed: false, code: "protected" }
+  );
+  assert.deepEqual(
+    getRightsWritePolicyDecision({ actorRole: "Admin", targetRole: "Admin" }),
+    { allowed: false, code: "forbidden" }
+  );
+  assert.deepEqual(
+    getRightsWritePolicyDecision({ actorRole: "User", targetRole: "User" }),
+    { allowed: false, code: "forbidden" }
+  );
+});
+
+test("concurrent saves use the BIGINT RPC contract after role authorization", async () => {
+  const makeAdmin = (targetRole = "User") => {
+    const admin = mockAdmin([
+      { error: null },
+      { error: null },
+      { error: null },
+      { data: { id: "1", role_id: 3 }, error: null },
+      { data: { name: targetRole }, error: null },
+    ]);
+
+    const calls = [];
+    admin.rpc = async (name, args) => {
+      calls.push({ name, args });
+      return { data: 1, error: null };
+    };
+
+    return { admin, calls };
   };
+
+  const first = makeAdmin();
+  const second = makeAdmin();
+
   const results = await Promise.all([
-    saveManagedUserRights(admin, "actor-id", userId, ["1", "3"]),
-    saveManagedUserRights(admin, "actor-id", userId, ["1"]),
+    saveManagedUserRights(first.admin, "Admin", "2", "1", ["1", "3"]),
+    saveManagedUserRights(second.admin, "Admin", "2", "1", ["1"]),
   ]);
+
   assert.deepEqual(results, [
-    { status: "forbidden", code: "policy_pending" },
-    { status: "forbidden", code: "policy_pending" },
+    { status: "ok", changedCount: 1 },
+    { status: "ok", changedCount: 1 },
   ]);
-  assert.equal(callCount, 0);
+
+  for (const entry of [first, second]) {
+    assert.equal(entry.calls.length, 1);
+    assert.equal(entry.calls[0].name, "manage_user_permissions");
+    assert.equal(entry.calls[0].args.p_actor_id, "2");
+    assert.equal(entry.calls[0].args.p_target_user_id, "1");
+  }
+});
+
+test("Admin cannot save rights for an Admin target", async () => {
+  const admin = mockAdmin([
+    { error: null },
+    { error: null },
+    { error: null },
+    { data: { id: "1", role_id: 3 }, error: null },
+    { data: { name: "Admin" }, error: null },
+  ]);
+
+  let rpcCalled = false;
+  admin.rpc = async () => {
+    rpcCalled = true;
+    return { data: 1, error: null };
+  };
+
+  const result = await saveManagedUserRights(
+    admin,
+    "Admin",
+    "2",
+    "1",
+    ["1"]
+  );
+
+  assert.equal(result.status, "forbidden");
+  assert.equal(rpcCalled, false);
 });

@@ -21,6 +21,43 @@ function required(name) {
   return value;
 }
 
+function assertMigrationSafety(env = process.env) {
+  if (env.DB_ENV !== 'development') {
+    throw new Error('Migration refused: set DB_ENV=development for a development database.');
+  }
+  if (!env.DB_HOST) {
+    throw new Error('Migration refused: set DB_HOST to an approved development host.');
+  }
+  const host = env.DB_HOST.toLowerCase();
+  const localHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+  const supabasePooler = host.endsWith('.pooler.supabase.com');
+  const supabaseDirect = /^db\.[^.]+\.supabase\.co$/.test(host);
+  if (!env.DB_NAME || (!/(?:_dev|_development)$/.test(env.DB_NAME) &&
+      !(env.DB_NAME === 'postgres' && (supabasePooler || supabaseDirect)))) {
+    throw new Error('Migration refused: set DB_NAME to a development-suffixed name, or postgres for an approved Supabase DEV database.');
+  }
+  if (localHosts.has(host)) return;
+
+  const allowedHosts = new Set(
+    (env.DB_ALLOWED_DEV_HOSTS || '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean),
+  );
+  if (!allowedHosts.has(host)) {
+    throw new Error('Migration refused: remote DB_HOST must be explicitly listed in DB_ALLOWED_DEV_HOSTS.');
+  }
+  if (env.DB_SSL !== 'true') {
+    throw new Error('Migration refused: remote migrations require DB_SSL=true.');
+  }
+  if (supabasePooler && !/^[^\s/]+\.[a-z0-9]+$/i.test(env.DB_USER || '')) {
+    throw new Error('Migration refused: a Supabase shared pooler requires DB_USER with its project reference.');
+  }
+  if ((supabasePooler || supabaseDirect) && Number(env.DB_PORT || 5432) === 6543) {
+    throw new Error('Migration refused: use a direct or session-mode Supabase connection to preserve the advisory lock.');
+  }
+  if (!env.DB_USER || env.DB_CONFIRM_DEV_PROJECT !== `${host}/${env.DB_NAME}/${env.DB_USER}`) {
+    throw new Error('Migration refused: set DB_CONFIRM_DEV_PROJECT to the exact remote host/database/user DEV target.');
+  }
+}
+
 function databaseConfig(overrides = {}) {
   const config = {
     host: required('DB_HOST'),
@@ -245,6 +282,7 @@ async function main() {
     return;
   }
 
+  if (command === 'migrate') assertMigrationSafety();
   const client = await connect();
   try {
     if (command === 'migrate') await migrate(client);
@@ -254,7 +292,11 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(`Database command failed: ${error.message}`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`Database command failed: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { assertMigrationSafety };

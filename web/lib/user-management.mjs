@@ -385,12 +385,14 @@ export async function decideUserApproval(admin, targetId, decision) {
       ? { [schema.statusColumn]: "Active" }
       : {}),
   };
-  const { data, error } = await admin
+  let query = admin
     .from("app_user")
     .update(values)
     .eq("id", targetId)
     .eq(schema.roleColumn, userRole)
-    .eq("approval_status", "Pending")
+    .eq("approval_status", "Pending");
+  if (decision === "approve") query = query.not("email_verified_at", "is", null);
+  const { data, error } = await query
     .select("id, is_blocked")
     .maybeSingle();
 

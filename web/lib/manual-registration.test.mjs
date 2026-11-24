@@ -47,14 +47,19 @@ function createHarness(options = {}) {
   return { dependencies, state };
 }
 
-test("creates a pending account without an anonymous session", async () => {
+test("creates a pending account and sends an email invitation", async () => {
   const calls = [];
+
   const result = await createPendingManualRegistration(input, {
     findUserRoleId: async () => ({ roleId: 7 }),
     findProfileByEmail: async () => ({ profile: null }),
-    createAuthUser: async (createdUser) => {
-      calls.push(["create", createdUser]);
+    inviteAuthUser: async (email, metadata) => {
+      calls.push(["invite", email, metadata]);
       return { user: { id: "created-auth-user" } };
+    },
+    updateAuthUser: async (id, attributes) => {
+      calls.push(["update", id, attributes]);
+      return { user: { id } };
     },
     insertProfile: async (profile) => {
       calls.push(["profile", profile]);
@@ -66,32 +71,43 @@ test("creates a pending account without an anonymous session", async () => {
   assert.equal(result.status, 201);
   assert.equal(result.body.approvalStatus, "Pending");
   assert.equal(result.body.authUserId, "created-auth-user");
-  assert.deepEqual(calls[0][1], {
-    email: input.email,
-    password: calls[0][1].password,
-    email_confirm: true,
-    app_metadata: { must_change_password: true },
-    user_metadata: { first_name: "Ada", last_name: "Lovelace" },
-  });
-  assert.equal(typeof calls[0][1].password, "string");
-  assert.ok(calls[0][1].password.length >= 40);
-  assert.deepEqual(calls[1][1], {
-    auth_user_id: "created-auth-user",
-    first_name: "Ada",
-    last_name: "Lovelace",
-    email: "ada@example.com",
-    role_id: 7,
-    approval_status: "Pending",
-    is_blocked: false,
-  });
+
+  assert.deepEqual(calls, [
+    [
+      "invite",
+      input.email,
+      { first_name: "Ada", last_name: "Lovelace" },
+    ],
+    [
+      "update",
+      "created-auth-user",
+      { app_metadata: { must_change_password: true } },
+    ],
+    [
+      "profile",
+      {
+        auth_user_id: "created-auth-user",
+        first_name: "Ada",
+        last_name: "Lovelace",
+        email: "ada@example.com",
+        role_id: 7,
+        approval_status: "Pending",
+        is_blocked: false,
+      },
+    ],
+  ]);
 });
 
-test("cleans up the Auth account if the pending profile cannot be saved", async () => {
+test("cleans up the invited Auth account if the pending profile cannot be saved", async () => {
   const deleted = [];
+
   const result = await createPendingManualRegistration(input, {
     findUserRoleId: async () => ({ roleId: 7 }),
     findProfileByEmail: async () => ({ profile: null }),
-    createAuthUser: async () => ({ user: { id: "created-auth-user" } }),
+    inviteAuthUser: async () => ({
+      user: { id: "created-auth-user" },
+    }),
+    updateAuthUser: async (id) => ({ user: { id } }),
     insertProfile: async () => ({
       error: { code: "XX001", message: "insert failed" },
     }),
@@ -105,23 +121,24 @@ test("cleans up the Auth account if the pending profile cannot be saved", async 
   assert.deepEqual(deleted, ["created-auth-user"]);
 });
 
-test("does not create a pending account when the active User role is missing", async () => {
-  let authUserCreated = false;
+test("does not send an invitation when the active User role is missing", async () => {
+  let invitationSent = false;
+
   const result = await createPendingManualRegistration(input, {
     findUserRoleId: async () => ({ roleId: null }),
     findProfileByEmail: async () => assert.fail("role must be resolved first"),
-    createAuthUser: async () => {
-      authUserCreated = true;
+    inviteAuthUser: async () => {
+      invitationSent = true;
       return { user: { id: "created-auth-user" } };
     },
+    updateAuthUser: async () => assert.fail("must not update Auth user"),
     insertProfile: async () => assert.fail("must not insert without a role"),
     deleteAuthUser: async () => assert.fail("no Auth user was created"),
   });
 
   assert.equal(result.status, 503);
-  assert.equal(authUserCreated, false);
+  assert.equal(invitationSent, false);
 });
-
 test("creates a Pending profile and marks password setup for a manual request", async () => {
   const { dependencies, state } = createHarness();
   const result = await createManualRegistration(user, input, dependencies);
@@ -211,7 +228,7 @@ test("reports cleanup failure for administrator follow-up", async () => {
   assert.match(result.body.error, /Contact the administrator/);
   assert.equal(
     state.logs.some(
-      ({ event }) => event === "Registration anonymous Auth user cleanup failed"
+      ({ event }) => event === "Registration Auth user cleanup failed"
     ),
     true
   );

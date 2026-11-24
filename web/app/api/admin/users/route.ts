@@ -6,6 +6,7 @@ import {
   provisionRegularUser,
   validateProvisioningInput,
 } from "@/lib/admin-provisioning.mjs";
+import { registrationEmailRedirect } from "@/lib/email-verification.mjs";
 import { listManagedUsers } from "@/lib/user-management.mjs";
 import { createSupabaseAdminClient, getSupabaseServerConfig } from "@/lib/supabase-admin";
 
@@ -144,7 +145,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await provisionRegularUser(admin, input);
+  const redirectTo = registrationEmailRedirect(process.env.APP_BASE_URL);
+  if (!redirectTo) {
+    console.error("Admin provisioning verification URL is not configured.");
+    return NextResponse.json({ error: "Account creation is temporarily unavailable." }, { status: 503 });
+  }
+  const result = await provisionRegularUser(admin, input, redirectTo);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }

@@ -60,9 +60,10 @@ export async function proxy(request: NextRequest) {
   const { data, error } = await supabase.auth.getUser();
   if (!data.user || error) {
     if (
-      isLoginPage ||
-      isPublicRegistrationPage ||
-      pathname === "/set-password" ||
+  pathname === "/" ||
+  isLoginPage ||
+  isPublicRegistrationPage ||
+  pathname === "/set-password" ||
       pathname === "/reset-password" ||
       pathname === "/auth/callback" ||
       pathname === "/auth/recovery-callback"
@@ -80,7 +81,7 @@ export async function proxy(request: NextRequest) {
   const admin = createSupabaseAdminClient();
   const { data: profile, error: profileError } = await admin
     .from("app_user")
-    .select("auth_user_id, is_blocked, approval_status")
+    .select("auth_user_id, is_blocked, approval_status, status")
     .eq("auth_user_id", data.user.id)
     .maybeSingle();
 

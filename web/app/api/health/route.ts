@@ -1,25 +1,23 @@
+
 import { connection, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/lib/supabase";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function GET() {
   await connection();
 
   try {
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase.rpc("health_check");
+    const supabase = createSupabaseAdminClient();
+
+    const { error } = await supabase
+      .from("app_user")
+      .select("id", { head: true })
+      .limit(1);
 
     if (error) {
       console.error("Database health check failed:", error.message);
 
       return NextResponse.json(
         { status: "error", message: "Database health check failed." },
-        { status: 503 }
-      );
-    }
-
-    if (data !== true) {
-      return NextResponse.json(
-        { status: "error", message: "Database health check returned an unexpected result." },
         { status: 503 }
       );
     }

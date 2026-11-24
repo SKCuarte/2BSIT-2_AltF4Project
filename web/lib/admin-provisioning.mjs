@@ -4,6 +4,7 @@ import {
   findActiveRoleId,
   findActiveRoleName,
   findAppUserRoleColumn,
+  findAuthorizationAccount,
 } from "./role-lookup.mjs";
 
 const GENERIC_PROVISIONING_ERROR =
@@ -25,33 +26,8 @@ export async function getAdminProvisioningAccess(admin, authUser) {
     return { status: "forbidden" };
   }
 
-  const roleSchema = await findAppUserRoleColumn(admin);
-  if (roleSchema.error || !roleSchema.roleColumn) {
-    console.error("Admin provisioning role schema lookup failed:", {
-      code: roleSchema.error?.code ?? "role_column_missing",
-    });
-    return { status: "unavailable" };
-  }
-
-  const { error: statusColumnError } = await admin
-    .from("app_user")
-    .select("status")
-    .limit(0);
-  if (statusColumnError && statusColumnError.code !== "42703") {
-    console.error("Admin provisioning status schema lookup failed:", {
-      code: statusColumnError.code ?? "status_column_lookup_failed",
-    });
-    return { status: "unavailable" };
-  }
-  const statusColumn = statusColumnError ? null : "status";
-
-  const { data: account, error: accountError } = await admin
-    .from("app_user")
-    .select(
-      `${roleSchema.roleColumn}, is_blocked, approval_status${statusColumn ? ", status" : ""}`
-    )
-    .eq("auth_user_id", authUser.id)
-    .maybeSingle();
+  const { account, roleColumn, error: accountError } =
+    await findAuthorizationAccount(admin, authUser.id);
 
   if (accountError) {
     console.error("Admin provisioning account lookup failed:", {
@@ -64,13 +40,13 @@ export async function getAdminProvisioningAccess(admin, authUser) {
     !account ||
     account.is_blocked ||
     account.approval_status !== "Approved" ||
-    (statusColumn && account.status !== "Active")
+    account.status !== "Active"
   ) {
     return { status: "forbidden" };
   }
 
   let roleResult;
-  if (roleSchema.roleColumn === "role_id") {
+  if (roleColumn === "role_id") {
     try {
       roleResult = await findActiveRoleName(admin, account.role_id);
     } catch (error) {
@@ -87,7 +63,7 @@ export async function getAdminProvisioningAccess(admin, authUser) {
     }
   }
   const roleName =
-    roleSchema.roleColumn === "role_id" ? roleResult.roleName : account.role;
+    roleColumn === "role_id" ? roleResult.roleName : account.role;
   if (!["Admin", "Superadmin"].includes(roleName)) {
     return { status: "forbidden", roleName };
   }
@@ -131,7 +107,11 @@ export function validateProvisioningInput(value) {
   return { firstName, lastName, email };
 }
 
-export async function provisionRegularUser(admin, input) {
+export async function provisionRegularUser(admin, input, redirectTo) {
+  if (!redirectTo) {
+    console.error("Admin provisioning verification URL is unavailable.");
+    return { ok: false, status: 503, error: GENERIC_PROVISIONING_ERROR };
+  }
   const roleSchema = await findAppUserRoleColumn(admin);
   if (roleSchema.error || !roleSchema.roleColumn) {
     console.error("Admin provisioning role schema lookup failed:", {
@@ -177,7 +157,7 @@ export async function provisionRegularUser(admin, input) {
     await admin.auth.admin.createUser({
       email: input.email,
       password: temporaryPassword,
-      email_confirm: true,
+      email_confirm: false,
       app_metadata: { [MUST_CHANGE_PASSWORD_KEY]: true },
       user_metadata: {
         first_name: input.firstName,
@@ -240,6 +220,22 @@ export async function provisionRegularUser(admin, input) {
       status: 503,
       error: "Account setup could not be completed. Please try again later.",
     };
+  }
+
+  let invitation;
+  try {
+    invitation = await admin.auth.admin.inviteUserByEmail(input.email, { redirectTo });
+  } catch (error) {
+    console.error("Admin provisioning invitation failed:", {
+      code: error instanceof Error ? error.name : "invitation_failed",
+    });
+    return { ok: false, status: 503, error: "Account was saved, but the verification invitation failed. Contact an administrator." };
+  }
+  if (invitation.error || invitation.data?.user?.id !== authData.user.id) {
+    console.error("Admin provisioning invitation failed:", {
+      code: invitation.error?.code ?? "unexpected_invitation_user",
+    });
+    return { ok: false, status: 503, error: "Account was saved, but the verification invitation failed. Contact an administrator." };
   }
 
   return {

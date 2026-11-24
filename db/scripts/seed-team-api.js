@@ -1,12 +1,10 @@
 const path = require('node:path');
-const { readTeamFile, required, root } = require('./lib/accounts');
+const { authApi, readTeamFile, required, root } = require('./lib/accounts');
 
 function getApi() {
-  const base = required('SUPABASE_URL').replace(/\/+$/, '');
-  const key = required('SUPABASE_SECRET_KEY');
-  const headers = { apikey: key, 'Content-Type': 'application/json' };
-  if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`;
-  return { base, headers };
+  required('SUPABASE_URL');
+  required('SUPABASE_SECRET_KEY');
+  return authApi();
 }
 
 async function findAuthUser(api, email) {

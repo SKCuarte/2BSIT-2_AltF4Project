@@ -19,7 +19,9 @@ The link is consumed by pages already on `main` (S1-DEV-04, PR #76), so this tas
 
 ### Dev-only users
 
-`npm run db:seed:dev` creates Admin Lisa Park and User Alex Rivera (`example.invalid` emails, a few rights each, granted by the first Superadmin) with no passwords. It refuses unless `DB_ENV=development` and the host is localhost or listed in `DB_ALLOWED_DEV_HOSTS`, and it lives outside the lexical seed runner so `db:seed` never runs it. Run `npm run db:setup-links -- --email <address>` afterwards for a dev user; add the address to `team.csv` first.
+`npm run db:seed:dev` creates Admin Lisa Park and User Alex Rivera (`example.invalid` emails, a few rights each, granted by the first Superadmin) with no passwords. It refuses unless `DB_ENV=development` and the actual connection host is localhost or listed in `DB_ALLOWED_DEV_HOSTS`. Remote connections also require `DB_CONFIRM_DEV_PROJECT=<lowercase host>/<database>/<user>` for the exact DEV target and certificate-verified TLS; connection options that disable verification are rejected. When `DATABASE_URL` is set, its effective host, database, and user take precedence over separate `DB_*` values, including connection-string query overrides. A shared Supabase pooler user must include the DEV project reference. These settings cannot prove the target is non-production; independently verify the DEV project before running it. The command lives outside the lexical seed runner so `db:seed` never runs it. Run `npm run db:setup-links -- --email <address>` afterwards for a dev user; add the address to `team.csv` first.
+
+Account-seeding and setup-link scripts require HTTPS and certificate verification for remote Supabase APIs. When an Auth API is configured, database-backed account seeds also require its URL and the effective database connection to identify the same project. Hosted connections use the standard project URL with either its direct database hostname or a shared pooler and project-qualified user; local API URLs require a local database. Custom domains are not accepted by this project-matching safeguard.
 
 ### Secret protection
 

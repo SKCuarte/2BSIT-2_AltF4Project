@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
-import { LogoutButton } from "@/components/logout-button";
 import { UserManagement } from "@/components/user-management";
 import { hasRight, MODULES } from "@/lib/dashboard-policy.mjs";
 import { loadDashboardStats } from "@/lib/dashboard-stats.mjs";
@@ -49,7 +48,6 @@ export default async function DashboardPage() {
             </div>
           </section>
           {(access.role === "Admin" || access.role === "Superadmin") && <UserManagement actorRole={access.role} />}
-          <div className="um-dashboard-logout"><LogoutButton /></div>
         </div>
       </div>
     </main>

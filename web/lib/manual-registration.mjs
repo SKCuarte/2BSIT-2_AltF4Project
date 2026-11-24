@@ -1,27 +1,21 @@
-import { randomBytes } from "node:crypto";
-import { MUST_CHANGE_PASSWORD_KEY } from "./auth-policy.mjs";
+﻿import { MUST_CHANGE_PASSWORD_KEY } from "./auth-policy.mjs";
 
 /**
- * Creates a pending Auth identity without signing the browser in.
+ * Creates a pending Auth identity and sends an email invitation.
  *
  * @param {{ firstName: string; lastName: string; email: string }} input
- * @param {{
- *   findProfileByEmail: (email: string) => Promise<{ profile?: object | null; error?: object | null }>;
- *   findUserRoleId: () => Promise<{ roleId?: number | string | null; error?: object | null }>;
- *   createAuthUser: (user: object) => Promise<{ user?: object | null; error?: object | null }>;
- *   insertProfile: (profile: object) => Promise<{ profile?: object | null; error?: object | null }>;
- *   deleteAuthUser: (id: string) => Promise<{ error?: object | null }>;
- *   logError?: (event: string, details: object) => void;
- * }} dependencies
+ * @param {object} dependencies
  */
 export async function createPendingManualRegistration(input, dependencies) {
   let roleResult;
+
   try {
     roleResult = await dependencies.findUserRoleId();
   } catch (error) {
     return failure(dependencies, "Registration User role lookup failed", error);
   }
-  if (roleResult.error || roleResult.roleId === null || roleResult.roleId === undefined) {
+
+  if (roleResult.error || roleResult.roleId == null) {
     return failure(
       dependencies,
       "Registration User role lookup failed",
@@ -30,11 +24,13 @@ export async function createPendingManualRegistration(input, dependencies) {
   }
 
   let existingProfile;
+
   try {
     existingProfile = await dependencies.findProfileByEmail(input.email);
   } catch (error) {
     return failure(dependencies, "Registration email lookup failed", error);
   }
+
   if (existingProfile.error) {
     return failure(
       dependencies,
@@ -42,6 +38,7 @@ export async function createPendingManualRegistration(input, dependencies) {
       existingProfile.error
     );
   }
+
   if (existingProfile.profile) {
     return {
       status: 409,
@@ -49,41 +46,75 @@ export async function createPendingManualRegistration(input, dependencies) {
     };
   }
 
-  const temporaryPassword = randomBytes(32).toString("base64url");
-  let authResult;
+  let invitation;
+
   try {
-    authResult = await dependencies.createAuthUser({
-      email: input.email,
-      password: temporaryPassword,
-      email_confirm: true,
-      app_metadata: { [MUST_CHANGE_PASSWORD_KEY]: true },
-      user_metadata: {
-        first_name: input.firstName,
-        last_name: input.lastName,
-      },
+    invitation = await dependencies.inviteAuthUser(input.email, {
+      first_name: input.firstName,
+      last_name: input.lastName,
     });
   } catch (error) {
-    return failure(dependencies, "Registration Auth user creation failed", error);
+    invitation = { error };
   }
-  if (authResult.error || !authResult.user?.id) {
+
+  if (invitation.error || !invitation.user?.id) {
     if (
-      authResult.error?.code === "email_exists" ||
-      authResult.error?.code === "user_already_exists"
+      invitation.error?.code === "email_exists" ||
+      invitation.error?.code === "user_already_exists"
     ) {
       return {
         status: 409,
         body: { error: "This email already has a registration request or account." },
       };
     }
-    return failure(
+
+    logFailure(
       dependencies,
-      "Registration Auth user creation failed",
-      authResult.error ?? new Error("Auth user creation returned no user.")
+      "Registration invitation failed",
+      invitation.error ?? new Error("Invitation returned no Auth user.")
     );
+
+    return {
+      status: 503,
+      body: {
+        error: "Unable to send the verification invitation. Please try again or contact the administrator.",
+      },
+    };
   }
 
-  const authUserId = authResult.user.id;
+  const authUserId = invitation.user.id;
+
+  let metadataResult;
+
+  try {
+    metadataResult = await dependencies.updateAuthUser(authUserId, {
+      app_metadata: { [MUST_CHANGE_PASSWORD_KEY]: true },
+    });
+  } catch (error) {
+    metadataResult = { error };
+  }
+
+  if (metadataResult.error || !metadataResult.user?.id) {
+    logFailure(
+      dependencies,
+      "Registration Auth metadata update failed",
+      metadataResult.error ?? new Error("Auth metadata update returned no user.")
+    );
+
+    const cleanupOk = await cleanupAuthUser(authUserId, dependencies);
+
+    return {
+      status: 503,
+      body: {
+        error: cleanupOk
+          ? "Unable to finish registration setup. Please try again."
+          : "Registration setup failed and cleanup could not be completed. Contact the administrator.",
+      },
+    };
+  }
+
   let profileResult;
+
   try {
     profileResult = await dependencies.insertProfile({
       auth_user_id: authUserId,
@@ -99,31 +130,21 @@ export async function createPendingManualRegistration(input, dependencies) {
   }
 
   if (profileResult.error || !profileResult.profile) {
-    let cleanupResult;
-    try {
-      cleanupResult = await dependencies.deleteAuthUser(authUserId);
-    } catch (error) {
-      cleanupResult = { error };
-    }
-    if (cleanupResult.error) {
-      logFailure(dependencies, "Registration Auth cleanup failed", {
-        authUserId,
-        error: cleanupResult.error,
-      });
-    }
+    const cleanupOk = await cleanupAuthUser(authUserId, dependencies);
 
-    if (profileResult.error?.code === "23505" && !cleanupResult.error) {
+    if (profileResult.error?.code === "23505" && cleanupOk) {
       return {
         status: 409,
         body: { error: "This email already has a registration request or account." },
       };
     }
+
     return {
       status: 503,
       body: {
-        error: cleanupResult.error
-          ? "Registration setup failed and cleanup could not be completed. Contact the administrator."
-          : "Unable to save the registration request. Please try again.",
+        error: cleanupOk
+          ? "Unable to save the registration request. Please try again."
+          : "Registration setup failed and cleanup could not be completed. Contact the administrator.",
       },
     };
   }
@@ -139,21 +160,14 @@ export async function createPendingManualRegistration(input, dependencies) {
 
 /**
  * Creates a pending registration request for a verified anonymous Auth session.
- * The email is not verified until an administrator approves the request.
  *
  * @param {object} user
  * @param {{ firstName: string; lastName: string; email: string }} input
- * @param {{
- *   findProfileByAuthUserId: (id: string) => Promise<{ profile?: object | null; error?: object | null }>;
- *   findProfileByEmail: (email: string) => Promise<{ profile?: object | null; error?: object | null }>;
- *   insertProfile: (profile: object) => Promise<{ profile?: object | null; error?: object | null }>;
- *   setFirstLoginMarker: (id: string) => Promise<{ error?: object | null }>;
- *   deleteAuthUser: (id: string) => Promise<{ error?: object | null }>;
- *   logError?: (event: string, details: object) => void;
- * }} dependencies
+ * @param {object} dependencies
  */
 export async function createManualRegistration(user, input, dependencies) {
   const authUserId = typeof user.id === "string" ? user.id : "";
+
   if (!authUserId || user.is_anonymous !== true) {
     return {
       status: 401,
@@ -162,11 +176,13 @@ export async function createManualRegistration(user, input, dependencies) {
   }
 
   let ownProfileResult;
+
   try {
     ownProfileResult = await dependencies.findProfileByAuthUserId(authUserId);
   } catch (error) {
     return failure(dependencies, "Registration profile lookup failed", error);
   }
+
   if (ownProfileResult.error) {
     return failure(
       dependencies,
@@ -174,6 +190,7 @@ export async function createManualRegistration(user, input, dependencies) {
       ownProfileResult.error
     );
   }
+
   if (ownProfileResult.profile) {
     return {
       status: 200,
@@ -185,6 +202,7 @@ export async function createManualRegistration(user, input, dependencies) {
   }
 
   let emailProfileResult;
+
   try {
     emailProfileResult = await dependencies.findProfileByEmail(input.email);
   } catch (error) {
@@ -194,6 +212,7 @@ export async function createManualRegistration(user, input, dependencies) {
       "Registration email lookup failed",
       error
     );
+
     return {
       status: 503,
       body: {
@@ -203,6 +222,7 @@ export async function createManualRegistration(user, input, dependencies) {
       },
     };
   }
+
   if (emailProfileResult.error) {
     const cleanupOk = await cleanupFailure(
       authUserId,
@@ -210,6 +230,7 @@ export async function createManualRegistration(user, input, dependencies) {
       "Registration email lookup failed",
       emailProfileResult.error
     );
+
     return {
       status: 503,
       body: {
@@ -219,8 +240,10 @@ export async function createManualRegistration(user, input, dependencies) {
       },
     };
   }
+
   if (emailProfileResult.profile) {
     const cleanupOk = await cleanupAuthUser(authUserId, dependencies);
+
     return {
       status: cleanupOk ? 409 : 503,
       body: {
@@ -232,6 +255,7 @@ export async function createManualRegistration(user, input, dependencies) {
   }
 
   let insertResult;
+
   try {
     insertResult = await dependencies.insertProfile({
       auth_user_id: authUserId,
@@ -251,12 +275,14 @@ export async function createManualRegistration(user, input, dependencies) {
       "Registration profile creation failed",
       insertResult.error ?? new Error("Profile insert did not return a row.")
     );
+
     if (insertResult.error?.code === "23505" && cleanupOk) {
       return {
         status: 409,
         body: { error: "This email already has a registration request or account." },
       };
     }
+
     return {
       status: 503,
       body: {
@@ -268,11 +294,13 @@ export async function createManualRegistration(user, input, dependencies) {
   }
 
   let markerResult;
+
   try {
     markerResult = await dependencies.setFirstLoginMarker(authUserId);
   } catch (error) {
     markerResult = { error };
   }
+
   if (markerResult.error) {
     const cleanupOk = await cleanupFailure(
       authUserId,
@@ -280,6 +308,7 @@ export async function createManualRegistration(user, input, dependencies) {
       "Registration password setup marker failed",
       markerResult.error
     );
+
     return {
       status: 503,
       body: {
@@ -299,25 +328,12 @@ export async function createManualRegistration(user, input, dependencies) {
 /**
  * Converts an approved anonymous request into a confirmed password account.
  *
- * @param {{
- *   createUser: (user: object) => Promise<{ user?: object | null; error?: object | null }>;
- *   moveProfile: (oldId: string, newId: string) => Promise<{ moved?: boolean; error?: object | null }>;
- *   deleteAuthUser: (id: string) => Promise<{ error?: object | null }>;
- *   logError?: (event: string, details: object) => void;
- * }} dependencies
- * @param {{
- *   authUserId: string;
- *   email: string;
- *   firstName: string;
- *   lastName: string;
- *   password: string;
- * }} input
+ * @param {object} input
+ * @param {object} dependencies
  */
-export async function activateApprovedManualRegistration(
-  input,
-  dependencies
-) {
+export async function activateApprovedManualRegistration(input, dependencies) {
   let createResult;
+
   try {
     createResult = await dependencies.createUser({
       email: input.email,
@@ -351,6 +367,7 @@ export async function activateApprovedManualRegistration(
       "Approved manual registration Auth activation failed",
       createResult.error ?? new Error("Auth user creation returned no user.")
     );
+
     return {
       ok: false,
       status: 503,
@@ -360,6 +377,7 @@ export async function activateApprovedManualRegistration(
   }
 
   const permanentAuthUserId = createResult.user.id;
+
   if (typeof permanentAuthUserId !== "string" || !permanentAuthUserId) {
     return {
       ok: false,
@@ -370,6 +388,7 @@ export async function activateApprovedManualRegistration(
   }
 
   let moveResult;
+
   try {
     moveResult = await dependencies.moveProfile(
       input.authUserId,
@@ -381,11 +400,13 @@ export async function activateApprovedManualRegistration(
 
   if (moveResult.error || !moveResult.moved) {
     let cleanupResult;
+
     try {
       cleanupResult = await dependencies.deleteAuthUser(permanentAuthUserId);
     } catch (error) {
       cleanupResult = { error };
     }
+
     if (cleanupResult.error) {
       logFailure(
         dependencies,
@@ -393,6 +414,7 @@ export async function activateApprovedManualRegistration(
         cleanupResult.error
       );
     }
+
     logFailure(
       dependencies,
       "Approved registration profile activation failed",
@@ -409,11 +431,13 @@ export async function activateApprovedManualRegistration(
   }
 
   let cleanupResult;
+
   try {
     cleanupResult = await dependencies.deleteAuthUser(input.authUserId);
   } catch (error) {
     cleanupResult = { error };
   }
+
   if (cleanupResult.error) {
     logFailure(
       dependencies,
@@ -432,22 +456,27 @@ async function cleanupFailure(authUserId, dependencies, event, error) {
 
 async function cleanupAuthUser(authUserId, dependencies) {
   let result;
+
   try {
     result = await dependencies.deleteAuthUser(authUserId);
   } catch (error) {
     result = { error };
   }
+
   if (!result.error) return true;
+
   logFailure(
     dependencies,
-    "Registration anonymous Auth user cleanup failed",
+    "Registration Auth user cleanup failed",
     result.error
   );
+
   return false;
 }
 
 function failure(dependencies, event, error) {
   logFailure(dependencies, event, error);
+
   return {
     status: 503,
     body: { error: "Unable to process registration. Please try again." },
@@ -455,12 +484,18 @@ function failure(dependencies, event, error) {
 }
 
 function logFailure(dependencies, event, error) {
-  const details =
-    typeof error === "object" && error !== null
-      ? {
-          code: "code" in error ? error.code : undefined,
-          message: "message" in error ? error.message : "Unknown error",
-        }
-      : { message: "Unknown error" };
+  const details = {
+    name: error?.name ?? undefined,
+    code: error?.code ?? undefined,
+    status: error?.status ?? undefined,
+    message:
+      typeof error === "string"
+        ? error
+        : error?.message ??
+          error?.msg ??
+          error?.error_description ??
+          String(error),
+  };
+
   dependencies.logError?.(event, details);
 }

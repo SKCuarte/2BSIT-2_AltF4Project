@@ -37,6 +37,10 @@ function createAdminMock(responses) {
           call.filters.push(["in", column, values]);
           return query;
         },
+        not(column, operator, value) {
+          call.filters.push(["not", column, operator, value]);
+          return query;
+        },
         or(value) {
           call.or = value;
           return query;
@@ -341,6 +345,7 @@ test("approving a pending User sets approval and account status to active", asyn
     ["eq", "id", "789"],
     ["eq", "role_id", 3],
     ["eq", "approval_status", "Pending"],
+    ["not", "email_verified_at", "is", null],
   ]);
 });
 
@@ -360,6 +365,18 @@ test("rejecting a pending User does not make the account active", async () => {
   });
   const updateCall = admin.calls.find((call) => call.update);
   assert.deepEqual(updateCall.update, { approval_status: "Rejected" });
+});
+
+test("an unverified registration cannot be approved and remains pending", async () => {
+  const admin = createAdminMock([
+    ...canonicalSchemaResponses(),
+    { data: { id: 3 }, error: null },
+    { data: null, error: null },
+  ]);
+  assert.deepEqual(await decideUserApproval(admin, "789", "approve"), { status: "conflict" });
+  assert.ok(admin.calls.find((call) => call.update).filters.some(
+    (filter) => filter[0] === "not" && filter[1] === "email_verified_at"
+  ));
 });
 
 test("Superadmin can promote an active approved User to Admin", async () => {

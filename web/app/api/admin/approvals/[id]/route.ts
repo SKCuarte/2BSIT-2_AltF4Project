@@ -46,7 +46,7 @@ export async function PATCH(
   }
   if (result.status === "conflict") {
     return NextResponse.json(
-      { error: "This registration is no longer pending. Refresh the list." },
+      { error: "This registration is no longer pending or its email is not verified. Refresh the list." },
       { status: 409 }
     );
   }
