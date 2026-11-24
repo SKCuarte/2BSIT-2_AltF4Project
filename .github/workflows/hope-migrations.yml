@@ -76,6 +76,8 @@ jobs:
           echo "$status" | grep -Fx 'APPLIED 008_protect_last_superadmin.sql'
       - name: Verify HOPE fixtures and constraints
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/hope_verification.sql
+      - name: Verify customer and product child delete checks
+        run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/child_delete_checks_verification.sql
       - name: Verify user-management schema and permissions
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql
       - name: Seed catalogue twice to prove idempotency
