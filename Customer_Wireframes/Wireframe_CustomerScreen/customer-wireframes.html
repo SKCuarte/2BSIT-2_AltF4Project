@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>S2-UIX-01 — Customer Screen Wireframes | Hope, Inc. ERP</title>
+<link rel="stylesheet" href="customer-wireframes.css">
+</head>
+<body>
+
+<header class="doc-top">
+  <div class="doc-brand">
+    <span class="mark">H</span>
+    <span>Hope, Inc. ERP <small>&middot; S2-UIX-01 Customer wireframes</small></span>
+  </div>
+  <div class="doc-top-meta">
+    <span class="pill accent">Issue #110</span>
+    <span class="pill">Sprint 2</span>
+    <span class="hide-sm">Low/mid-fidelity</span>
+  </div>
+</header>
+
+<main class="doc">
+
+  <section class="intro" id="overview">
+    <p class="eyebrow">S2-UIX-01 &middot; Wireframes</p>
+    <h1>Customer screens</h1>
+    <p class="lead">
+      Low/mid-fidelity wireframes for the Customer module: list with search and filters, create and edit forms
+      (including the payment-terms field), a detail view, and soft-delete/restore actions. Layout reuses the approved
+      Hope, Inc. main-page shell (240&nbsp;px dark sidebar, top bar, 1200&nbsp;px content column) and the design-system
+      tokens.
+    </p>
+    <dl class="meta-grid">
+      <div><dt>Issue</dt><dd>#110 [S2-UIX-01] Wireframes: customer screens</dd></div>
+      <div><dt>State</dt><dd>Open &middot; no comments</dd></div>
+      <div><dt>Labels</dt><dd>UI/UX DESIGNER &middot; Sprint 2</dd></div>
+      <div><dt>Assignee</dt><dd>marlgembarozo (usr-Chr0nos)</dd></div>
+      <div><dt>Milestone</dt><dd>Sprint 2 &middot; due 2026-11-24</dd></div>
+      <div><dt>Artifact type</dt><dd>Wireframes only (no production code)</dd></div>
+    </dl>
+  </section>
+
+  <nav class="doc-nav" aria-label="Wireframe sections">
+    <a href="#overview">Overview</a>
+    <a href="#s01">01 List</a>
+    <a href="#s02">02 Search &amp; filter</a>
+    <a href="#s03">03 Create</a>
+    <a href="#s04">04 Edit</a>
+    <a href="#s05">05 Detail</a>
+    <a href="#s06">06 Deactivate</a>
+    <a href="#s07">07 Restore</a>
+    <a href="#s08">08 Responsive</a>
+    <a href="#s09">09 States &amp; notes</a>
+  </nav>
+
+  <!-- ====================================================================
+       OVERVIEW
+       ==================================================================== -->
+  <section class="doc-section" aria-labelledby="scope-title">
+    <h2 id="scope-title">Scope and flow</h2>
+    <p class="section-lead">
+      The wireframes cover the five things Issue #110 asks for: list, search/filter controls, create/edit forms with the
+      payment-terms field, and soft-delete/restore. A detail view is included because the issue names it in its
+      objective.
+    </p>
+
+    <div class="flow mt-4" role="img" aria-label="Customer screen flow">
+      <div class="flow-lane">
+        <span class="flow-node start">Customer list</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node">Search / filter</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node">Customer detail</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node">Edit form</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node ok">Save &rarr; list (toast)</span>
+      </div>
+      <div class="flow-lane">
+        <span class="flow-node start">Customer list</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node">Add customer</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node">Create form</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node ok">Save &rarr; list (toast)</span>
+      </div>
+      <div class="flow-lane">
+        <span class="flow-node start">List / detail</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node warn">Deactivate</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node">Confirm</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-branch">
+          <span class="flow-node bad">Blocked: related records</span>
+          <span class="flow-node ok">Inactive (kept)</span>
+        </span>
+      </div>
+      <div class="flow-lane">
+        <span class="flow-node start">Status filter: Inactive</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node">Restore</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node">Confirm</span><span class="flow-arrow">&rarr;</span>
+        <span class="flow-node ok">Active again</span>
+      </div>
+    </div>
+
+    <div class="two-col mt-4">
+      <div class="note">
+        <b>Grounded in the issue and related tickets</b>
+        Customer list search and status/payment-term filters and active-only default come from S2-DEV-01 (#90).
+        Create/edit with <code>payTerms</code> validation comes from S2-DEV-02 (#91). Soft delete to Inactive,
+        blocked deletion when child records exist, and restore come from S2-DEV-03 (#92). Field names and limits come
+        from <code>db/migrations/001_hope_base_structure.sql</code> and the unmerged active-view migration.
+      </div>
+      <div class="note warn">
+        <b>Read the notes on each screen</b>
+        Several points are inconsistent between the issue, the database, and the Sprint 1 handoff (field set,
+        <code>payTerms</code> naming, restore rights, hard-delete copy). They are flagged on the relevant screen and
+        collected in the deliverable document.
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       SCREEN 01 — LIST
+       ==================================================================== -->
+  <section class="doc-section" id="s01">
+    <h2>01 &middot; Customer list</h2>
+    <p class="section-lead">Default view: active customers, with search, status and payment-terms filters, and row actions gated by Customer rights.</p>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">01</span>
+        <div>
+          <h3>Customer list &mdash; default (Active)</h3>
+          <p>Desktop 1440 &middot; Super Admin with all three Customer rights</p>
+        </div>
+        <span class="pill">Full app shell</span>
+      </div>
+
+      <div class="app">
+        <aside class="app-side" aria-label="Main navigation (static wireframe)">
+          <div class="app-side-top"><span class="logo-h">H</span> Hope, Inc. ERP</div>
+          <nav class="app-nav">
+            <span class="navitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg> Dashboard</span>
+            <span class="navitem on" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14a6.5 6.5 0 0 1 3.5 6"/></svg> Customer</span>
+            <span class="navitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg> Product</span>
+            <span class="navitem"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/></svg> Human Resources</span>
+            <span class="navitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-7"/></svg> Sales</span>
+            <span class="navitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg> Reports</span>
+            <span class="navitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg> User Management</span>
+          </nav>
+          <div class="app-user">
+            <span class="avatar" aria-hidden="true">S</span>
+            <span class="who"><strong>Super Admin</strong><span>Super Admin</span></span>
+            <span class="out">Log out</span>
+          </div>
+        </aside>
+
+        <div class="app-main">
+          <div class="app-top">
+            <div class="left">
+              <span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+              <span class="app-title">Customer</span>
+            </div>
+            <span class="role-badge">Super Admin</span>
+          </div>
+
+          <div class="app-body">
+            <h2 class="view-title">Customer</h2>
+            <p class="view-sub">Active customers. Search by name or ID, then narrow by status or payment terms.</p>
+
+            <div class="toolbar">
+              <input class="search" type="search" placeholder="Search customer name or ID" aria-label="Search customers">
+              <select aria-label="Filter by status">
+                <option>Active</option>
+                <option>All statuses</option>
+                <option>Inactive</option>
+              </select>
+              <select aria-label="Filter by payment terms">
+                <option>All payment terms</option>
+                <option>Net 15</option>
+                <option>Net 30</option>
+                <option>Net 45</option>
+                <option>COD</option>
+                <option>Prepaid</option>
+              </select>
+              <button class="btn btn-primary" type="button">Add customer</button>
+            </div>
+
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Customer ID</th>
+                    <th scope="col">Customer name</th>
+                    <th scope="col">Address</th>
+                    <th scope="col">Payment terms</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="id">C-001</td>
+                    <td><a class="cust-link" href="#s05">Acme Corporation</a></td>
+                    <td>123 Main St, Metro City</td>
+                    <td>Net 30</td>
+                    <td><span class="st st-active">Active</span></td>
+                    <td>
+                      <div class="row-actions">
+                        <button class="btn btn-outline btn-sm" type="button">Edit</button>
+                        <button class="btn btn-danger btn-sm" type="button">Deactivate</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="id">C-002</td>
+                    <td><a class="cust-link" href="#s05">Globex Industries</a></td>
+                    <td>456 Oak Ave, Harbor Town</td>
+                    <td>Net 45</td>
+                    <td><span class="st st-active">Active</span></td>
+                    <td>
+                      <div class="row-actions">
+                        <button class="btn btn-outline btn-sm" type="button">Edit</button>
+                        <button class="btn btn-danger btn-sm" type="button">Deactivate</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="id">C-003</td>
+                    <td><a class="cust-link" href="#s05">Initech LLC</a></td>
+                    <td>789 Pine Rd, Silicon Valley</td>
+                    <td>COD</td>
+                    <td><span class="st st-active">Active</span></td>
+                    <td>
+                      <div class="row-actions">
+                        <button class="btn btn-outline btn-sm" type="button">Edit</button>
+                        <button class="btn btn-danger btn-sm" type="button">Deactivate</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="id">C-005</td>
+                    <td><a class="cust-link" href="#s05">Stark Enterprises</a></td>
+                    <td>200 Park Avenue, New York</td>
+                    <td>Net 15</td>
+                    <td><span class="st st-active">Active</span></td>
+                    <td>
+                      <div class="row-actions">
+                        <button class="btn btn-outline btn-sm" type="button">Edit</button>
+                        <button class="btn btn-danger btn-sm" type="button">Deactivate</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p class="small muted mt-2">Showing 4 active customers. <span class="callout">1</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="annotations">
+        <div class="note">
+          <b>1 &middot; Default filter is Active</b>
+          S2-DEV-01 (#90) says the list displays active customers. Inactive records stay reachable through the status
+          filter so Restore is possible.
+        </div>
+        <div class="note">
+          <b>Row actions follow rights</b>
+          Add customer needs Add Customer; Edit needs Edit Customer; Deactivate needs Delete Customer. S2-DEV-01
+          requires each button to render only when the matching right is held.
+        </div>
+        <div class="note gap">
+          <b>Column set needs a decision</b>
+          The Sprint 1 handoff lists Customer columns as Name, Email, Phone, Status. The database has
+          <code>customer_id</code>, <code>customer_name</code>, <code>customer_address</code>, <code>terms</code>,
+          <code>status</code>, <code>stamp</code> &mdash; no email or phone. This wireframe follows the database because
+          the issue requires <code>payTerms</code>, which only exists there.
+        </div>
+        <div class="note gap">
+          <b>View permission is not in the rights catalogue</b>
+          #90 mentions a &ldquo;Customer view permission&rdquo;, but the 36-right catalogue only defines Add, Edit and
+          Delete Customer. See Open question 1.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       SCREEN 02 — SEARCH & FILTER STATES
+       ==================================================================== -->
+  <section class="doc-section" id="s02">
+    <h2>02 &middot; Search and filter states</h2>
+    <p class="section-lead">Search plus status and payment-terms filters combine. Three states are shown: matching results, no results, and the Inactive filter that exposes Restore.</p>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">02a</span>
+        <div>
+          <h3>Search &ldquo;acme&rdquo; + payment terms &ldquo;Net 30&rdquo;</h3>
+          <p>Filters combine; the clear-filters action resets all three controls</p>
+        </div>
+      </div>
+      <div class="app no-side">
+        <div class="app-main">
+          <div class="app-top">
+            <div class="left"><span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="app-title">Customer</span></div>
+            <span class="role-badge">Super Admin</span>
+          </div>
+          <div class="app-body">
+            <div class="toolbar">
+              <input class="search" type="search" value="acme" aria-label="Search customers">
+              <select aria-label="Filter by status"><option>Active</option><option>All statuses</option><option>Inactive</option></select>
+              <select aria-label="Filter by payment terms"><option>All payment terms</option><option>Net 15</option><option selected>Net 30</option><option>Net 45</option><option>COD</option><option>Prepaid</option></select>
+              <button class="btn btn-outline" type="button">Clear filters</button>
+              <button class="btn btn-primary" type="button">Add customer</button>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr><th scope="col">Customer ID</th><th scope="col">Customer name</th><th scope="col">Address</th><th scope="col">Payment terms</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="id">C-001</td>
+                    <td><a class="cust-link" href="#s05">Acme Corporation</a></td>
+                    <td>123 Main St, Metro City</td>
+                    <td>Net 30</td>
+                    <td><span class="st st-active">Active</span></td>
+                    <td><div class="row-actions"><button class="btn btn-outline btn-sm" type="button">Edit</button><button class="btn btn-danger btn-sm" type="button">Deactivate</button></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="small muted mt-2">1 result for &ldquo;acme&rdquo; with Net 30.</p>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note"><b>Filter set</b>Status and payment-term filtering come from #90. The status filter includes Inactive so soft-deleted customers can be found.</div>
+        <div class="note"><b>Search target</b>&ldquo;Search customer name or ID&rdquo; is the proposed placeholder; #90 only says &ldquo;search&rdquo;. Search debounce and minimum characters are not specified.</div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">02b</span>
+        <div>
+          <h3>No matching customers</h3>
+          <p>Distinct from &ldquo;no customers exist yet&rdquo;</p>
+        </div>
+      </div>
+      <div class="app no-side">
+        <div class="app-main">
+          <div class="app-top">
+            <div class="left"><span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="app-title">Customer</span></div>
+            <span class="role-badge">Super Admin</span>
+          </div>
+          <div class="app-body">
+            <div class="toolbar">
+              <input class="search" type="search" value="northwind" aria-label="Search customers">
+              <select aria-label="Filter by status"><option>Active</option><option>All statuses</option><option>Inactive</option></select>
+              <select aria-label="Filter by payment terms"><option>All payment terms</option><option>Net 15</option><option>Net 30</option><option>Net 45</option><option>COD</option><option>Prepaid</option></select>
+              <button class="btn btn-outline" type="button">Clear filters</button>
+              <button class="btn btn-primary" type="button">Add customer</button>
+            </div>
+            <div class="empty-state">
+              <span class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></span>
+              <h4>No customers match your filters.</h4>
+              <p>Try a different name or ID, or clear the filters to see all active customers.</p>
+              <button class="btn btn-outline" type="button">Clear filters</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note"><b>Empty copy</b>The User Management list uses &ldquo;No accounts match your filters.&rdquo; This mirrors that pattern for Customer. The &ldquo;no customers yet&rdquo; variant is in the state matrix (09).</div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">02c</span>
+        <div>
+          <h3>Status filter: Inactive &mdash; Restore entry point</h3>
+          <p>Soft-deleted customers are kept and can be reactivated</p>
+        </div>
+      </div>
+      <div class="app no-side">
+        <div class="app-main">
+          <div class="app-top">
+            <div class="left"><span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="app-title">Customer</span></div>
+            <span class="role-badge">Super Admin</span>
+          </div>
+          <div class="app-body">
+            <div class="toolbar">
+              <input class="search" type="search" placeholder="Search customer name or ID" aria-label="Search customers">
+              <select aria-label="Filter by status"><option>Active</option><option>All statuses</option><option selected>Inactive</option></select>
+              <select aria-label="Filter by payment terms"><option>All payment terms</option><option>Net 15</option><option>Net 30</option><option>Net 45</option><option>COD</option><option>Prepaid</option></select>
+              <button class="btn btn-primary" type="button">Add customer</button>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr><th scope="col">Customer ID</th><th scope="col">Customer name</th><th scope="col">Address</th><th scope="col">Payment terms</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="id">C-004</td>
+                    <td><a class="cust-link" href="#s05">Umbrella Corp</a></td>
+                    <td>1 Raccoon City Blvd</td>
+                    <td>Prepaid</td>
+                    <td><span class="st st-inactive">Inactive</span></td>
+                    <td><div class="row-actions"><button class="btn btn-outline btn-sm" type="button">Edit</button><button class="btn btn-primary btn-sm" type="button">Restore</button></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="small muted mt-2">Showing 1 inactive customer.</p>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note"><b>Restore lives beside the inactive record</b>#92 requires restore to reactivate soft-deleted customers. The action appears only in the Inactive view.</div>
+        <div class="note gap"><b>Restore right is undefined</b>The catalogue has only Add/Edit/Delete Customer. #92 says &ldquo;delete/manage rights&rdquo;. Whether Restore uses Delete Customer or a new right must be decided (Open question 2).</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       SCREEN 03 — CREATE
+       ==================================================================== -->
+  <section class="doc-section" id="s03">
+    <h2>03 &middot; Create customer</h2>
+    <p class="section-lead">Form fields follow the CUSTOMER table. Payment terms is the field the issue calls <code>payTerms</code>.</p>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">03</span>
+        <div>
+          <h3>Add customer</h3>
+          <p>Inline panel above the list, matching the existing module pattern</p>
+        </div>
+      </div>
+      <div class="app no-side">
+        <div class="app-main">
+          <div class="app-top">
+            <div class="left"><span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="app-title">Customer</span></div>
+            <span class="role-badge">Super Admin</span>
+          </div>
+          <div class="app-body">
+            <a class="back-link" href="#s01">&larr; Back to customer list</a>
+
+            <div class="form-panel">
+              <div class="form-head">
+                <div>
+                  <h3>Add customer</h3>
+                  <p>Fields marked <span class="req">*</span> are required.</p>
+                </div>
+                <span class="pill">New record</span>
+              </div>
+
+              <div class="form-grid">
+                <div class="field">
+                  <label for="new-id">Customer ID <span class="req">*</span> <span class="callout">1</span></label>
+                  <input id="new-id" type="text" placeholder="e.g. C-006" maxlength="10">
+                  <span class="hint">Up to 10 characters.</span>
+                </div>
+                <div class="field">
+                  <label for="new-name">Customer name <span class="req">*</span></label>
+                  <input id="new-name" type="text" placeholder="e.g. Acme Corporation" maxlength="100">
+                  <span class="hint">Up to 100 characters.</span>
+                </div>
+                <div class="field">
+                  <label for="new-terms">Payment terms <span class="req">*</span> <span class="callout">2</span></label>
+                  <select id="new-terms">
+                    <option value="">Select payment terms</option>
+                    <option>Net 15</option>
+                    <option>Net 30</option>
+                    <option>Net 45</option>
+                    <option>COD</option>
+                    <option>Prepaid</option>
+                  </select>
+                  <span class="hint">Values from the CUSTOMER.terms definition.</span>
+                </div>
+                <div class="field">
+                  <label for="new-status">Status</label>
+                  <select id="new-status" class="is-readonly" disabled>
+                    <option>Active</option>
+                  </select>
+                  <span class="hint">Set automatically on create.</span>
+                </div>
+                <div class="field span-2">
+                  <label for="new-address">Address</label>
+                  <input id="new-address" type="text" placeholder="Street, city" maxlength="200">
+                  <span class="hint">Optional. Up to 200 characters.</span>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button class="btn btn-primary" type="button">Save customer</button>
+                <button class="btn btn-outline" type="button">Cancel</button>
+              </div>
+              <p class="form-note">Status is Active on create (database default). It changes only through Deactivate or Restore, not through this form.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note"><b>Field limits</b><code>customer_id</code> VARCHAR(10) PK, <code>customer_name</code> VARCHAR(100) NOT NULL, <code>customer_address</code> VARCHAR(200), <code>terms</code> VARCHAR(20).</div>
+        <div class="note gap"><b>1 &middot; Customer ID entry</b>The schema makes the ID the primary key, but nothing states whether staff type it or the system generates it. This wireframe shows manual entry; confirm (Open question 3).</div>
+        <div class="note gap"><b>2 &middot; payTerms vs terms</b>The issue and #91 call the field <code>payTerms</code>; the database column is <code>terms</code>. #86 proposes NOT NULL/CHECK constraints, but migration 001 has no such constraint yet (Open question 4).</div>
+        <div class="note"><b>Container</b>The existing Customer module renders an inline form above the table. A dialog would also match the design system, but inline keeps consistency with the built screen.</div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">03b</span>
+        <div>
+          <h3>Add customer &mdash; validation errors</h3>
+          <p>Field-level messages; entered values are preserved</p>
+        </div>
+      </div>
+      <div class="app no-side">
+        <div class="app-main">
+          <div class="app-body">
+            <div class="form-panel">
+              <div class="form-head">
+                <div><h3>Add customer</h3><p>2 fields need attention.</p></div>
+              </div>
+              <div class="form-grid">
+                <div class="field has-error">
+                  <label for="err-id">Customer ID <span class="req">*</span></label>
+                  <input id="err-id" type="text" value="C-001" aria-describedby="err-id-msg" aria-invalid="true">
+                  <span class="error" id="err-id-msg">That customer ID is already in use.</span>
+                </div>
+                <div class="field has-error">
+                  <label for="err-name">Customer name <span class="req">*</span></label>
+                  <input id="err-name" type="text" value="" aria-describedby="err-name-msg" aria-invalid="true">
+                  <span class="error" id="err-name-msg">Customer name is required.</span>
+                </div>
+                <div class="field">
+                  <label for="err-terms">Payment terms <span class="req">*</span></label>
+                  <select id="err-terms"><option>Net 30</option></select>
+                </div>
+                <div class="field">
+                  <label for="err-address">Address</label>
+                  <input id="err-address" type="text" value="123 Main St, Metro City">
+                </div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-primary" type="button">Save customer</button>
+                <button class="btn btn-outline" type="button">Cancel</button>
+              </div>
+              <p class="form-note">Errors appear directly under the field, the form does not submit, and the email-style red border is the design-system error token.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note"><b>Grounded in #91</b>Create and edit must show clear validation and success/error feedback. #86 rejects empty/invalid <code>payTerms</code> at the database layer.</div>
+        <div class="note"><b>Duplicate-ID wording</b>Mirrors the User Management pattern &ldquo;That email is already registered.&rdquo; It is a pattern inference, not an approved string.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       SCREEN 04 — EDIT
+       ==================================================================== -->
+  <section class="doc-section" id="s04">
+    <h2>04 &middot; Edit customer</h2>
+    <p class="section-lead">Same fields, prefilled. Status is not edited here; deactivation and restore are separate confirmed actions.</p>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">04</span>
+        <div>
+          <h3>Edit customer &mdash; Acme Corporation</h3>
+          <p>Prefilled values from C-001</p>
+        </div>
+      </div>
+      <div class="app no-side">
+        <div class="app-main">
+          <div class="app-top">
+            <div class="left"><span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="app-title">Customer</span></div>
+            <span class="role-badge">Super Admin</span>
+          </div>
+          <div class="app-body">
+            <a class="back-link" href="#s05">&larr; Back to customer detail</a>
+
+            <div class="form-panel">
+              <div class="form-head">
+                <div>
+                  <h3>Edit customer</h3>
+                  <p>Acme Corporation &middot; C-001</p>
+                </div>
+                <span class="st st-active">Active</span>
+              </div>
+
+              <div class="form-grid">
+                <div class="field is-readonly">
+                  <label for="edit-id">Customer ID</label>
+                  <input id="edit-id" type="text" value="C-001" disabled>
+                  <span class="hint">Record identifier.</span>
+                </div>
+                <div class="field">
+                  <label for="edit-name">Customer name <span class="req">*</span></label>
+                  <input id="edit-name" type="text" value="Acme Corporation" maxlength="100">
+                </div>
+                <div class="field">
+                  <label for="edit-terms">Payment terms <span class="req">*</span></label>
+                  <select id="edit-terms">
+                    <option>Net 15</option>
+                    <option selected>Net 30</option>
+                    <option>Net 45</option>
+                    <option>COD</option>
+                    <option>Prepaid</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="edit-address">Address</label>
+                  <input id="edit-address" type="text" value="123 Main St, Metro City" maxlength="200">
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button class="btn btn-primary" type="button">Save changes</button>
+                <button class="btn btn-outline" type="button">Cancel</button>
+              </div>
+            </div>
+
+            <div class="form-panel mt-3">
+              <div class="form-head">
+                <div>
+                  <h3>Deactivate customer</h3>
+                  <p>Hides the customer from the active list. The record is kept and can be restored.</p>
+                </div>
+                <button class="btn btn-danger" type="button">Deactivate</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note gap"><b>ID immutability is a proposal</b>Nothing in the issue or schema says the primary key can or cannot be edited. It is shown read-only to avoid an unapproved key change; confirm (Open question 3).</div>
+        <div class="note"><b>Success feedback</b>#91 requires success feedback. The handoff specifies a toast at bottom centre that disappears after 2.2&nbsp;s: &ldquo;Changes saved&rdquo;.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       SCREEN 05 — DETAIL
+       ==================================================================== -->
+  <section class="doc-section" id="s05">
+    <h2>05 &middot; Customer detail</h2>
+    <p class="section-lead">Read-only record view with the two actions that make sense from here: Edit and Deactivate.</p>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">05</span>
+        <div>
+          <h3>Customer detail &mdash; Acme Corporation</h3>
+          <p>Opened from the customer name in the list</p>
+        </div>
+      </div>
+      <div class="app no-side">
+        <div class="app-main">
+          <div class="app-top">
+            <div class="left"><span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="app-title">Customer</span></div>
+            <span class="role-badge">Super Admin</span>
+          </div>
+          <div class="app-body">
+            <a class="back-link" href="#s01">&larr; Back to customer list</a>
+
+            <div class="detail-card">
+              <div class="detail-head">
+                <h3>Acme Corporation</h3>
+                <span class="st st-active">Active</span>
+                <div class="row-actions">
+                  <button class="btn btn-outline btn-sm" type="button">Edit</button>
+                  <button class="btn btn-danger btn-sm" type="button">Deactivate</button>
+                </div>
+              </div>
+              <dl class="detail-grid">
+                <div class="detail-item"><dt>Customer ID</dt><dd>C-001</dd></div>
+                <div class="detail-item"><dt>Payment terms</dt><dd>Net 30</dd></div>
+                <div class="detail-item"><dt>Status</dt><dd>Active</dd></div>
+                <div class="detail-item"><dt>Address</dt><dd>123 Main St, Metro City</dd></div>
+                <div class="detail-item"><dt>Last updated</dt><dd>EDITED user1 2026-10-13 1:01 PM</dd></div>
+              </dl>
+            </div>
+
+            <div class="note mt-3">
+              <b>Related records are not shown in this wireframe</b>
+              Deactivation is blocked when related sales records exist (#92, and the SALES foreign key uses ON DELETE RESTRICT).
+              The issue does not say whether the detail view should list those records, so no panel is invented here.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note"><b>Detail view is in the objective, not the checklist</b>Issue #110 names a detail view in the objective but lists only list/search/form/soft-delete in the acceptance criteria. It is included to satisfy the objective.</div>
+        <div class="note"><b>Last updated</b>The <code>stamp</code> column already stores text such as &ldquo;EDITED user1 2026-10-13 1:01 PM&rdquo;. It is shown read-only.</div>
+        <div class="note gap"><b>No detail design exists in the references</b>The Sprint 1 handoff only tabulates Customer columns; no customer detail screen or Figma frame is provided (Open question 5).</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       SCREEN 06 — DEACTIVATE
+       ==================================================================== -->
+  <section class="doc-section" id="s06">
+    <h2>06 &middot; Soft delete (deactivate)</h2>
+    <p class="section-lead">Soft delete sets Status to Inactive. It never removes the row. If related sales exist, the action is blocked.</p>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">06</span>
+        <div>
+          <h3>Deactivate confirmation</h3>
+          <p>Confirmation dialog, per the handoff&rsquo;s confirm-dialog rule</p>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="backdrop" aria-hidden="true"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="deact-title">
+          <span class="dlg-icon dlg-danger" aria-hidden="true">!</span>
+          <h3 id="deact-title">Deactivate Acme Corporation?</h3>
+          <p class="sub">The customer will be marked Inactive and hidden from the active list. The record is kept and can be restored.</p>
+          <div class="dlg-body">
+            <p>Existing sales records are not changed.</p>
+          </div>
+          <div class="dlg-actions">
+            <button class="btn btn-outline" type="button">Cancel</button>
+            <button class="btn btn-danger" type="button">Deactivate customer</button>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note"><b>Wording is deliberate</b>&ldquo;Deactivate&rdquo; and &ldquo;can be restored&rdquo; match the soft-delete behaviour in #92 and the CUSTOMER status comment. The Sprint 1 prototype&rsquo;s &ldquo;This cannot be undone&rdquo; copy describes a hard delete and must not be reused.</div>
+        <div class="note"><b>Status value</b>The database CHECK allows only Active or Inactive. &ldquo;Inactive&rdquo; is the soft-delete state.</div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">06b</span>
+        <div>
+          <h3>Deactivate blocked by related records</h3>
+          <p>Child-record integrity check</p>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="backdrop" aria-hidden="true"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="blocked-title">
+          <span class="dlg-icon dlg-warn" aria-hidden="true">!</span>
+          <h3 id="blocked-title">This customer can&rsquo;t be deactivated</h3>
+          <p class="sub">Acme Corporation has related sales records. Resolve or reassign those records first, then try again.</p>
+          <div class="dlg-body">
+            <p class="muted">The customer stays Active. No data is changed.</p>
+          </div>
+          <div class="dlg-actions">
+            <button class="btn btn-primary" type="button">Close</button>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note"><b>Grounded in #92 and the schema</b>#92 requires deletion to be blocked when restricted child records exist. <code>SALES.customer_id</code> references <code>CUSTOMER</code> with ON DELETE RESTRICT.</div>
+        <div class="note gap"><b>Which records, and how to resolve them</b>Neither the issue nor the references define whether the dialog should list the blocking sales or offer a jump to them. No list is shown (Open question 6).</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       SCREEN 07 — RESTORE
+       ==================================================================== -->
+  <section class="doc-section" id="s07">
+    <h2>07 &middot; Restore</h2>
+    <p class="section-lead">Restore sets Status back to Active. It is available from the Inactive filter and from an inactive customer&rsquo;s detail view.</p>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">07</span>
+        <div>
+          <h3>Restore confirmation</h3>
+          <p>Primary (teal) action, because restoring is not destructive</p>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="backdrop" aria-hidden="true"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="restore-title">
+          <span class="dlg-icon dlg-ok" aria-hidden="true">&#10003;</span>
+          <h3 id="restore-title">Restore Umbrella Corp?</h3>
+          <p class="sub">The customer will be marked Active and appear in the active list again.</p>
+          <div class="dlg-actions">
+            <button class="btn btn-outline" type="button">Cancel</button>
+            <button class="btn btn-primary" type="button">Restore customer</button>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note"><b>Grounded in #92</b>&ldquo;Restore action reactivates soft-deleted customers for authorized users.&rdquo;</div>
+        <div class="note gap"><b>Authorisation</b>&ldquo;Authorized users&rdquo; is not mapped to a right. See Open question 2.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       SCREEN 08 — RESPONSIVE
+       ==================================================================== -->
+  <section class="doc-section" id="s08">
+    <h2>08 &middot; Responsive behaviour</h2>
+    <p class="section-lead">The Sprint 1 handoff sets breakpoints at 860&nbsp;px and 680&nbsp;px. The S1-UIX-05 review adds a warning about hidden row actions on phones.</p>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">08</span>
+        <div>
+          <h3>Tablet (768) and phone (390)</h3>
+          <p>Table scrolls at tablet; phone uses stacked cards so actions stay visible</p>
+        </div>
+      </div>
+      <div class="responsive-row">
+        <div class="tablet">
+          <div class="app-top">
+            <div class="left"><span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="app-title">Customer</span></div>
+            <span class="role-badge">Super Admin</span>
+          </div>
+          <div class="app-body">
+            <div class="toolbar">
+              <input class="search" type="search" placeholder="Search customer name or ID" aria-label="Search customers">
+              <select aria-label="Filter by status"><option>Active</option><option>All statuses</option><option>Inactive</option></select>
+              <select aria-label="Filter by payment terms"><option>All payment terms</option><option>Net 15</option><option>Net 30</option><option>Net 45</option><option>COD</option><option>Prepaid</option></select>
+              <button class="btn btn-primary" type="button">Add customer</button>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th scope="col">Customer ID</th><th scope="col">Customer name</th><th scope="col">Address</th><th scope="col">Payment terms</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead>
+                <tbody>
+                  <tr><td class="id">C-001</td><td><a class="cust-link" href="#s05">Acme Corporation</a></td><td>123 Main St, Metro City</td><td>Net 30</td><td><span class="st st-active">Active</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm" type="button">Edit</button><button class="btn btn-danger btn-sm" type="button">Deactivate</button></div></td></tr>
+                  <tr><td class="id">C-002</td><td><a class="cust-link" href="#s05">Globex Industries</a></td><td>456 Oak Ave, Harbor Town</td><td>Net 45</td><td><span class="st st-active">Active</span></td><td><div class="row-actions"><button class="btn btn-outline btn-sm" type="button">Edit</button><button class="btn btn-danger btn-sm" type="button">Deactivate</button></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="scroll-hint">Swipe horizontally to see all columns and row actions.</p>
+          </div>
+        </div>
+
+        <div class="phone">
+          <div class="phone-top">
+            <span class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+            <span class="app-title">Customer</span>
+            <span class="role-badge">Admin</span>
+          </div>
+          <div class="phone-body">
+            <h2 class="view-title">Customer</h2>
+            <div class="stack mt-2">
+              <input type="search" placeholder="Search customer name or ID" aria-label="Search customers">
+              <select aria-label="Filter by status"><option>Active</option><option>All statuses</option><option>Inactive</option></select>
+              <select aria-label="Filter by payment terms"><option>All payment terms</option><option>Net 15</option><option>Net 30</option><option>Net 45</option><option>COD</option><option>Prepaid</option></select>
+              <button class="btn btn-primary" type="button">Add customer</button>
+            </div>
+
+            <div class="mobile-cards mt-3">
+              <div class="mobile-card">
+                <div class="mc-top"><span class="mc-name">Acme Corporation</span><span class="st st-active">Active</span></div>
+                <p class="mc-meta">C-001 &middot; Net 30</p>
+                <p class="mc-meta">123 Main St, Metro City</p>
+                <div class="row-actions">
+                  <button class="btn btn-outline btn-sm" type="button">Edit</button>
+                  <button class="btn btn-danger btn-sm" type="button">Deactivate</button>
+                </div>
+              </div>
+              <div class="mobile-card">
+                <div class="mc-top"><span class="mc-name">Globex Industries</span><span class="st st-active">Active</span></div>
+                <p class="mc-meta">C-002 &middot; Net 45</p>
+                <p class="mc-meta">456 Oak Ave, Harbor Town</p>
+                <div class="row-actions">
+                  <button class="btn btn-outline btn-sm" type="button">Edit</button>
+                  <button class="btn btn-danger btn-sm" type="button">Deactivate</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotations">
+        <div class="note"><b>Breakpoints</b>Above 860&nbsp;px the sidebar is open; at 860&nbsp;px and below it overlays and starts closed; at 680&nbsp;px and below user controls stack and cards become one column.</div>
+        <div class="note warn"><b>Phone cards are a recommendation</b>S1-UIX-05 finding UM-01 says phone tables hide row actions behind horizontal scrolling. The card layout follows that recommendation; it is not an approved Customer spec.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       SCREEN 09 — STATES, PERMISSIONS, TOKENS
+       ==================================================================== -->
+  <section class="doc-section" id="s09">
+    <h2>09 &middot; State, permission and token notes</h2>
+    <p class="section-lead">Quick reference for developers picking up the wireframes.</p>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">09</span>
+        <div>
+          <h3>State matrix</h3>
+          <p>What each state looks like and where it came from</p>
+        </div>
+      </div>
+      <div class="app-body">
+        <div class="matrix-wrap">
+          <table class="matrix">
+            <caption>Customer screen states</caption>
+            <thead>
+              <tr><th scope="col">State</th><th scope="col">Where</th><th scope="col">Presentation</th><th scope="col">Source</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Default list</td><td>List</td><td>Active customers, newest data as stored</td><td>#90</td></tr>
+              <tr><td>Searching</td><td>List</td><td>Query retained in the search field; results replace the table body</td><td>#90</td></tr>
+              <tr><td>No matches</td><td>List</td><td>&ldquo;No customers match your filters.&rdquo; + Clear filters</td><td>User Management pattern; inferred</td></tr>
+              <tr><td>No customers at all</td><td>List</td><td>&ldquo;No customers yet.&rdquo; + Add customer (if the right is held)</td><td>Inferred empty state</td></tr>
+              <tr><td>Create success</td><td>Create</td><td>Return to list; toast &ldquo;Customer added&rdquo; (2.2&nbsp;s)</td><td>#91; handoff toast rule</td></tr>
+              <tr><td>Edit success</td><td>Edit</td><td>Return to detail/list; toast &ldquo;Changes saved&rdquo;</td><td>#91; handoff toast rule</td></tr>
+              <tr><td>Validation error</td><td>Create / Edit</td><td>Message under the field; values preserved; no submit</td><td>#91; AC-13</td></tr>
+              <tr><td>Deactivate confirm</td><td>List / Detail</td><td>Confirm dialog; danger button</td><td>#92; handoff confirm-dialog rule</td></tr>
+              <tr><td>Deactivate blocked</td><td>List / Detail</td><td>Dialog explaining related records; only Close</td><td>#92; FK RESTRICT</td></tr>
+              <tr><td>Deactivated</td><td>List</td><td>Status tag Inactive; row leaves the Active view</td><td>#92; schema</td></tr>
+              <tr><td>Restore confirm</td><td>List / Detail</td><td>Confirm dialog; primary button</td><td>#92</td></tr>
+              <tr><td>Restored</td><td>List</td><td>Status tag Active; row leaves the Inactive view</td><td>#92</td></tr>
+              <tr><td>Loading</td><td>Any</td><td>Not specified in the issue or references</td><td>&mdash;</td></tr>
+              <tr><td>Load error</td><td>Any</td><td>Not specified; AC-12 asks for a clear message without sensitive data</td><td>AC-12</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="mt-4">Permission-dependent actions</h3>
+        <div class="matrix-wrap mt-2">
+          <table class="matrix">
+            <caption>Buttons render only when the matching Customer right is held (#90)</caption>
+            <thead>
+              <tr><th scope="col">Control</th><th scope="col">Right</th><th scope="col">Without the right</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Add customer</td><td><code>Add Customer</code></td><td>Hidden</td></tr>
+              <tr><td>Edit</td><td><code>Edit Customer</code></td><td>Hidden</td></tr>
+              <tr><td>Deactivate</td><td><code>Delete Customer</code></td><td>Hidden</td></tr>
+              <tr><td>Restore</td><td>Not defined &mdash; &ldquo;delete/manage&rdquo; per #92</td><td>Undecided</td></tr>
+              <tr><td>View list / detail</td><td>Not defined &mdash; &ldquo;Customer view permission&rdquo; per #90</td><td>Undecided</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="mt-4">Design-system alignment</h3>
+        <div class="matrix-wrap mt-2">
+          <table class="matrix">
+            <caption>Tokens and dimensions reused by these wireframes</caption>
+            <thead>
+              <tr><th scope="col">Element</th><th scope="col">Value</th><th scope="col">Token / source</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Sidebar</td><td>240&nbsp;px, #0f2430, text #dbe7ee, muted #8fa6b4, active #16798d</td><td><code>--sidebar*</code>; hi-fi handoff + built preview</td></tr>
+              <tr><td>Content column</td><td>max 1200&nbsp;px, 4% side padding</td><td>Hi-fi handoff; <code>.wrap</code></td></tr>
+              <tr><td>Top bar</td><td>hamburger, view title, role badge; sticky</td><td>Hi-fi handoff; built preview</td></tr>
+              <tr><td>Page / view title</td><td>2.2&ndash;3.7&nbsp;rem page; 1.5&nbsp;rem view</td><td>Hi-fi handoff</td></tr>
+              <tr><td>Controls</td><td>radius 10&nbsp;px; 42&nbsp;px height; 9 &times; 16&nbsp;px padding</td><td><code>--radius-md</code>, <code>--control-height</code></td></tr>
+              <tr><td>Cards / tables</td><td>radius 14&nbsp;px; 1&nbsp;px border; 20&ndash;24&nbsp;px padding</td><td><code>--radius-lg</code></td></tr>
+              <tr><td>Dialogs</td><td>radius 18&nbsp;px; 560&nbsp;px wide in this set</td><td><code>--radius-xl</code>; handoff (18&nbsp;px)</td></tr>
+              <tr><td>Status tags</td><td>pill; Active teal; Inactive red</td><td>Handoff component table; built <code>.tag.off</code></td></tr>
+              <tr><td>Focus</td><td>2&nbsp;px accent outline / focus ring token</td><td><code>:focus-visible</code>, <code>--focus-ring</code></td></tr>
+              <tr><td>Typography</td><td>Avenir Next, Segoe UI, system-ui; body 16&nbsp;px / 1.6</td><td><code>--font</code>; handoff</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note gap mt-4">
+          <b>Inactive tag colour is inconsistent</b>
+          The handoff says &ldquo;Active (teal), Blocked / Inactive / On leave (red)&rdquo; in its component table but
+          &ldquo;inactive and on-leave statuses use the warning color&rdquo; in the module section. The built CSS uses
+          danger red. These wireframes use red; the design owner should confirm.
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-cap">
+        <span class="frame-no">&#9873;</span>
+        <div>
+          <h3>Open questions carried into review</h3>
+          <p>Full detail is in <code>S2-UIX-01-deliverables.md</code></p>
+        </div>
+      </div>
+      <div class="app-body">
+        <ol class="small" style="padding-left:18px; display:grid; gap:8px; color:var(--text)">
+          <li>Does a Customer view right exist, or is list access implied by any Customer right?</li>
+          <li>Which right authorises Restore &mdash; Delete Customer or a new one?</li>
+          <li>Is Customer ID typed by staff, generated, and editable after creation?</li>
+          <li>Is <code>payTerms</code> required, and what CHECK values apply? Is the column renamed from <code>terms</code>?</li>
+          <li>What belongs on the detail view, and should it list related sales?</li>
+          <li>Should the blocked-deactivate dialog name or link the related records?</li>
+          <li>Which column set is approved: Name/Email/Phone/Status (handoff) or ID/Name/Address/Terms/Status (database)?</li>
+          <li>Is pagination required? It appears in User Management but not in the Customer tickets.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <footer class="doc-footer">
+    Hope, Inc. ERP &middot; S2-UIX-01 customer wireframes &middot; Issue #110 &middot; derived from the Sprint 1 design
+    system, hi-fi handoff, built preview, fix list, and database migrations. References were read only; nothing was
+    written to the repository.
+  </footer>
+
+</main>
+</body>
+</html>
