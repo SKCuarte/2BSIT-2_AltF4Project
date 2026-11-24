@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Delete price | Hope, Inc. ERP</title>
+<link rel="stylesheet" href="states.css">
+</head>
+<body class="">
+<div class="stage deep"><div class="app"><aside class="sidebar">
+  <div class="brand"><span class="brand-mark">H</span>Hope, Inc. ERP</div>
+  <nav class="nav">
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Dashboard</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>Customer</div>
+    <div class="nav-item on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>Product</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/></svg>Human Resources</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-7"/></svg>Sales</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>User Management</div>
+  </nav>
+  <div class="side-user"><span class="avatar">S</span><span class="who"><b>Super Admin</b><span>Super Admin</span></span><span class="logout">Log out</span></div>
+</aside><div class="main"><div class="topbar">
+  <div class="topbar-left"><span class="hamburger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="top-title">Product</span></div>
+  <span class="role-badge">Super Admin</span>
+</div><div class="content"><div class="content-inner"><a class="back-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Back to product list</a>
+  <div class="detail-head"><h2>Industrial Widget A</h2><span class="pill active"><span class="dot"></span>Active</span></div>
+  <p class="view-sub">P-001 · pcs</p>
+  <div class="current-price-card"><span class="amount">$13.75</span><span class="meta"><b>Current price</b><span>effective 2026-10-01</span></span></div></div></div></div></div><div class="backdrop"></div><div class="modal">
+    <div class="modal-head"><div><h2>Price History: P-001</h2><p>Industrial Widget A · pcs · Active</p></div><button class="btn btn-outline btn-sm">Close</button></div>
+    <div class="modal-toolbar"><span class="current-strip">Current: $13.75 <small>as of 2026-11-24</small></span></div>
+    <div class="modal-body"><div class="table-card"><table>
+  <thead><tr><th>Effective date</th><th class="numeric">Unit price</th><th>Status</th><th>Last updated</th><th style="text-align:right">Actions</th></tr></thead>
+  <tbody>
+  <tr class="history-current">
+    <td class="id">2026-10-01</td>
+    <td class="numeric"><b>$13.75</b></td>
+    <td><span class="pill current"><span class="dot"></span>Current</span></td>
+    <td class="stamp">CREATED system 2026-10-01 9:00 AM</td>
+    <td><div class="row-actions">
+      <button class="btn btn-outline btn-sm">Edit <span class="perm">E</span></button>
+      <button class="btn btn-danger btn-sm">Delete <span class="perm">D</span></button>
+    </div></td>
+  </tr>
+  </tbody></table></div></div>
+    <div class="modal-foot"><button class="btn btn-outline">Close</button></div>
+  </div><div class="dialog small">
+    <div class="dialog-head"><span class="dialog-icon danger">!</span><div><h2>Delete this price?</h2><p class="sub">The entry will be removed from this product’s price history. The next applicable price becomes current if one exists.</p></div></div>
+    <div class="context"><b>$13.75</b> · effective 2026-10-01 <span>· P-001</span></div>
+    <div class="dialog-actions"><button class="btn btn-outline">Cancel</button><button class="btn btn-danger">Delete price</button></div>
+  </div></div>
+</body>
+</html>

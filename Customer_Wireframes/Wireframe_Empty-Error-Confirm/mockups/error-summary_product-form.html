@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Product form — summary | Hope, Inc. ERP</title>
+<link rel="stylesheet" href="states.css">
+</head>
+<body class="">
+<div class="app"><aside class="sidebar">
+  <div class="brand"><span class="brand-mark">H</span>Hope, Inc. ERP</div>
+  <nav class="nav">
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Dashboard</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>Customer</div>
+    <div class="nav-item on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>Product</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/></svg>Human Resources</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-7"/></svg>Sales</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>User Management</div>
+  </nav>
+  <div class="side-user"><span class="avatar">S</span><span class="who"><b>Super Admin</b><span>Super Admin</span></span><span class="logout">Log out</span></div>
+</aside><div class="main"><div class="topbar">
+  <div class="topbar-left"><span class="hamburger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="top-title">Product</span></div>
+  <span class="role-badge">Super Admin</span>
+</div><div class="content"><div class="content-inner"><a class="back-link"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>Back to product list</a>
+  <div class="panel">
+    <div class="form-head">
+      <div><h2>Add product</h2><p>Identity and unit only. Prices are added through Price History.</p></div>
+      <span class="pill neutral"><span class="dot"></span>New record</span>
+    </div>
+    <div class="banner danger" role="alert">
+  <span class="banner-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l9 16.5H3z"/><path d="M12 9.5v5M12 17.5h.01"/></svg></span>
+  <div class="banner-body"><b>Check 3 fields before saving.</b><p>The form was not saved. Jump to the first field that needs attention.</p><ul class="banner-list"><li><a href="#">Product ID</a> — required</li><li><a href="#">Product name</a> — required</li><li><a href="#">Unit</a> — choose a unit of measure</li></ul></div>
+  
+</div>
+    
+    <div class="form-grid">
+      <div class="field has-error">
+    <label>Product ID</label>
+    <input class="input" value="" placeholder="P-006">
+    
+    <span class="error-msg">Product ID is required.</span>
+  </div>
+      <div class="field has-error">
+    <label>Product name</label>
+    <input class="input" value="" placeholder="e.g. Safety Goggles">
+    
+    <span class="error-msg">Product name is required.</span>
+  </div>
+      <div class="field has-error">
+    <label>Unit</label>
+    <select class="select"><option selected>Select a unit</option><option>pc</option><option>ea</option><option>mtr</option><option>pkg</option><option>ltr</option><option>pcs</option><option>pair</option><option>can</option><option>meter</option></select>
+    
+    <span class="error-msg">Choose a unit of measure.</span>
+  </div>
+      <div class="field">
+    <label>Status</label>
+    <select class="select" disabled><option selected>Active</option></select>
+    <span class="hint">Set by the system. Changed only by deactivation.</span>
+    
+  </div>
+    </div>
+    <div class="form-note">Current price is not entered here. Add an effective-dated price from Price History after saving.</div>
+    <div class="form-actions">
+      <button class="btn btn-primary">Save product</button>
+      <button class="btn btn-outline">Cancel</button>
+    </div>
+  </div></div></div></div></div>
+</body>
+</html>
