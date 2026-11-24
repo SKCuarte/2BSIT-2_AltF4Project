@@ -1,6 +1,7 @@
 # Migrations
 
 Add forward-only PostgreSQL migrations here as `NNN_description.sql` (for example, `001_create_users.sql`). Files are applied in lexical filename order and each file plus its tracking row commits in one transaction. Migration `009` creates active Customer and Product views with lookup indexes.
+Migration `010` adds the reusable `get_product_price_as_of(product_id, target_date)` function and an active price-history lookup index.
 
 Never change or remove an applied migration. Add a new numbered migration instead. Do not put `BEGIN` or `COMMIT` inside migration files; the runner owns the transaction. Audit logging objects are excluded here and reserved for Task 6.
 
