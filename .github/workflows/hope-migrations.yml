@@ -60,6 +60,7 @@ jobs:
           echo "$status" | grep -Fx 'PENDING 006_lock_down_user_management_api_access.sql'
           echo "$status" | grep -Fx 'PENDING 007_password_reset_token.sql'
           echo "$status" | grep -Fx 'PENDING 008_protect_last_superadmin.sql'
+          echo "$status" | grep -Fx 'PENDING 011_validation_constraints_customer_product.sql'
       - name: Apply migrations
         run: npm run db:migrate
       - name: Confirm applied migration status
@@ -74,10 +75,13 @@ jobs:
           echo "$status" | grep -Fx 'APPLIED 006_lock_down_user_management_api_access.sql'
           echo "$status" | grep -Fx 'APPLIED 007_password_reset_token.sql'
           echo "$status" | grep -Fx 'APPLIED 008_protect_last_superadmin.sql'
+          echo "$status" | grep -Fx 'APPLIED 011_validation_constraints_customer_product.sql'
       - name: Verify HOPE fixtures and constraints
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/hope_verification.sql
       - name: Verify user-management schema and permissions
         run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql
+      - name: Verify customer and product validation constraints
+        run: psql -h localhost -U postgres -d hope_test -v ON_ERROR_STOP=1 -f db/verification/validation_constraints_verification.sql
       - name: Seed catalogue twice to prove idempotency
         run: |
           npm run db:seed
