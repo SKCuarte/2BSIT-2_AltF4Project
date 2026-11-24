@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>p01-product-list | Hope, Inc. ERP</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body class="">
+<div class="app"><aside class="sidebar">
+  <div class="brand"><span class="brand-mark">H</span>Hope, Inc. ERP</div>
+  <nav class="nav">
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Dashboard</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>Customer</div>
+    <div class="nav-item on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>Product</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/></svg>Human Resources</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-7"/></svg>Sales</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>User Management</div>
+  </nav>
+  <div class="side-user"><span class="avatar">S</span><span class="who"><b>Super Admin</b><span>Super Admin</span></span><span class="logout">Log out</span></div>
+</aside><div class="main"><div class="topbar">
+  <div class="topbar-left"><span class="hamburger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="top-title">Product</span></div>
+  <span class="role-badge">Super Admin</span>
+</div><div class="content"><div class="content-inner"><h1 class="view-title">Product</h1>
+  <p class="view-sub">Active products and their effective current price.</p>
+  <div class="toolbar">
+    <div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input class="input" value="" placeholder="Search product ID or name"></div>
+    <select class="select"><option selected>All units</option><option>pc</option><option>ea</option><option>mtr</option><option>pkg</option><option>ltr</option><option>pcs</option><option>pair</option><option>can</option><option>meter</option></select>
+    <select class="select"><option selected>Active</option><option>Inactive</option><option>All statuses</option></select>
+    
+    <button class="btn btn-primary">Add product <span class="perm">A</span></button>
+  </div>
+  <div class="table-card"><table>
+  <thead><tr><th>Product ID</th><th>Product</th><th>Unit</th><th>Current price</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+  <tbody>
+  <tr>
+    <td class="id">P-001</td>
+    <td><a class="link" href="#">Industrial Widget A</a></td>
+    <td>pcs</td>
+    <td><span class="price-cell"><b>$13.75</b><small>Effective 2026-10-01</small></span></td>
+    <td><span class="pill active"><span class="dot"></span>Active</span></td>
+    <td><div class="row-actions">
+      <button class="btn btn-outline btn-sm">View <span class="perm">V</span></button>
+      <button class="btn btn-outline btn-sm">Edit <span class="perm">E</span></button>
+      <button class="btn btn-outline btn-sm">Price History <span class="perm">H</span></button>
+      <button class="btn btn-danger btn-sm">Deactivate <span class="perm">D</span></button>
+    </div></td>
+  </tr>
+  <tr>
+    <td class="id">P-002</td>
+    <td><a class="link" href="#">Steel Bracket Heavy</a></td>
+    <td>pcs</td>
+    <td><span class="price-cell"><b>$48.50</b><small>Effective 2026-10-01</small></span></td>
+    <td><span class="pill active"><span class="dot"></span>Active</span></td>
+    <td><div class="row-actions">
+      <button class="btn btn-outline btn-sm">View <span class="perm">V</span></button>
+      <button class="btn btn-outline btn-sm">Edit <span class="perm">E</span></button>
+      <button class="btn btn-outline btn-sm">Price History <span class="perm">H</span></button>
+      <button class="btn btn-danger btn-sm">Deactivate <span class="perm">D</span></button>
+    </div></td>
+  </tr>
+  <tr>
+    <td class="id">P-003</td>
+    <td><a class="link" href="#">Lubricant Oil 5L</a></td>
+    <td>can</td>
+    <td><span class="price-cell"><b>$28.00</b><small>Effective 2026-02-01</small></span></td>
+    <td><span class="pill active"><span class="dot"></span>Active</span></td>
+    <td><div class="row-actions">
+      <button class="btn btn-outline btn-sm">View <span class="perm">V</span></button>
+      <button class="btn btn-outline btn-sm">Edit <span class="perm">E</span></button>
+      <button class="btn btn-outline btn-sm">Price History <span class="perm">H</span></button>
+      <button class="btn btn-danger btn-sm">Deactivate <span class="perm">D</span></button>
+    </div></td>
+  </tr>
+  <tr>
+    <td class="id">P-005</td>
+    <td><a class="link" href="#">Copper Wire 2.5mm</a></td>
+    <td>meter</td>
+    <td><span class="price-cell"><b>$2.35</b><small>Effective 2026-10-05</small></span></td>
+    <td><span class="pill active"><span class="dot"></span>Active</span></td>
+    <td><div class="row-actions">
+      <button class="btn btn-outline btn-sm">View <span class="perm">V</span></button>
+      <button class="btn btn-outline btn-sm">Edit <span class="perm">E</span></button>
+      <button class="btn btn-outline btn-sm">Price History <span class="perm">H</span></button>
+      <button class="btn btn-danger btn-sm">Deactivate <span class="perm">D</span></button>
+    </div></td>
+  </tr>
+  <tr>
+    <td class="id">P-004</td>
+    <td><a class="link" href="#">Safety Gloves XL</a></td>
+    <td>pair</td>
+    <td><span class="price-cell none"><b>No current price</b><small>Add an effective-date price</small></span></td>
+    <td><span class="pill inactive"><span class="dot"></span>Inactive</span></td>
+    <td><div class="row-actions">
+      <button class="btn btn-outline btn-sm">View <span class="perm">V</span></button>
+      
+      <button class="btn btn-outline btn-sm">Price History <span class="perm">H</span></button>
+      <button class="btn btn-primary btn-sm">Restore <span class="perm">R</span></button>
+    </div></td>
+  </tr>
+  </tbody></table></div>
+  <p class="result-note">Showing 4 active products and 1 inactive product.</p>
+  <div class="perm-legend"><b>Permission key</b>
+    <span class="key"><span class="perm">V</span> View / module access (open)</span>
+    <span class="key"><span class="perm">A</span> Add Product</span>
+    <span class="key"><span class="perm">E</span> Edit Product</span>
+    <span class="key"><span class="perm">D</span> Delete Product</span>
+    <span class="key"><span class="perm">R</span> Restore (open)</span>
+    <span class="key"><span class="perm">H</span> Price History</span>
+    <span class="key"><span class="perm">A+</span> Add Price</span>
+    <span class="key"><span class="perm">E+</span> Edit Price</span>
+    <span class="key"><span class="perm">D+</span> Delete Price</span>
+  </div></div></div></div></div>
+</body>
+</html>

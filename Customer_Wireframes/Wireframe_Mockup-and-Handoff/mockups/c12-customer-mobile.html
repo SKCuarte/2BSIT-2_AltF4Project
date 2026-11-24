@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>c12-customer-mobile | Hope, Inc. ERP</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body class="phone-board">
+<div class="phone">
+    <div class="phone-top"><div class="left"><span class="hamburger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="title">Customer</span></div><span class="role-badge">Super Admin</span></div>
+    <div class="phone-body"><h1 class="view-title">Customer</h1>
+  <p class="view-sub">Active customers.</p>
+  <div class="toolbar">
+    <div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input class="input" placeholder="Search customer"></div>
+    <select class="select"><option>Active</option><option>All statuses</option><option>Inactive</option></select>
+    <select class="select"><option>All terms</option><option>Net 30</option><option>COD</option></select>
+    <button class="btn btn-primary span-2">Add customer <span class="perm">A</span></button>
+  </div>
+  <div class="card-list">
+    <div class="m-card">
+      <div class="m-card-top"><span class="m-card-name">Acme Corporation</span><span class="pill active"><span class="dot"></span>Active</span></div>
+      <div class="m-card-meta">C-001 · Net 30</div>
+      <div class="m-card-meta">123 Main St, Metro City</div>
+      <div class="row-actions"><button class="btn btn-outline btn-sm">Edit <span class="perm">E</span></button><button class="btn btn-danger btn-sm">Deactivate <span class="perm">D</span></button></div>
+    </div>
+    <div class="m-card">
+      <div class="m-card-top"><span class="m-card-name">Globex Industries</span><span class="pill active"><span class="dot"></span>Active</span></div>
+      <div class="m-card-meta">C-002 · Net 45</div>
+      <div class="m-card-meta">456 Oak Ave, Harbor Town</div>
+      <div class="row-actions"><button class="btn btn-outline btn-sm">Edit <span class="perm">E</span></button><button class="btn btn-danger btn-sm">Deactivate <span class="perm">D</span></button></div>
+    </div>
+    <div class="m-card">
+      <div class="m-card-top"><span class="m-card-name">Umbrella Corp</span><span class="pill inactive"><span class="dot"></span>Inactive</span></div>
+      <div class="m-card-meta">C-004 · Prepaid</div>
+      <div class="m-card-meta">1 Raccoon City Blvd</div>
+      <div class="row-actions"><button class="btn btn-outline btn-sm">Edit <span class="perm">E</span></button><button class="btn btn-primary btn-sm">Restore <span class="perm">R</span></button></div>
+    </div>
+  </div></div>
+  </div>
+</body>
+</html>
