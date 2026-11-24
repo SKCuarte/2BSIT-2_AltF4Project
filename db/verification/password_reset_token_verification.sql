@@ -6,7 +6,10 @@ INSERT INTO auth.users (id) VALUES
     ('00000000-0000-4000-8000-000000000101'),
     ('00000000-0000-4000-8000-000000000102'),
     ('00000000-0000-4000-8000-000000000103'),
-    ('00000000-0000-4000-8000-000000000104');
+    ('00000000-0000-4000-8000-000000000104'),
+    ('00000000-0000-4000-8000-000000000105'),
+    ('00000000-0000-4000-8000-000000000106'),
+    ('00000000-0000-4000-8000-000000000107');
 
 CREATE TEMP TABLE password_reset_test_users (
     case_name TEXT PRIMARY KEY,
@@ -21,7 +24,10 @@ WITH inserted_users AS (
         ('Verify', 'TokenValid', 'verify.token.valid@example.invalid', '00000000-0000-4000-8000-000000000101', 'Active', 'Approved', FALSE),
         ('Verify', 'TokenExpired', 'verify.token.expired@example.invalid', '00000000-0000-4000-8000-000000000102', 'Active', 'Approved', FALSE),
         ('Verify', 'TokenUsed', 'verify.token.used@example.invalid', '00000000-0000-4000-8000-000000000103', 'Active', 'Approved', FALSE),
-        ('Verify', 'TokenBlocked', 'verify.token.blocked@example.invalid', '00000000-0000-4000-8000-000000000104', 'Active', 'Approved', TRUE)
+        ('Verify', 'TokenBlocked', 'verify.token.blocked@example.invalid', '00000000-0000-4000-8000-000000000104', 'Active', 'Approved', TRUE),
+        ('Verify', 'TokenInactive', 'verify.token.inactive@example.invalid', '00000000-0000-4000-8000-000000000105', 'Inactive', 'Approved', FALSE),
+        ('Verify', 'TokenPending', 'verify.token.pending@example.invalid', '00000000-0000-4000-8000-000000000106', 'Active', 'Pending', FALSE),
+        ('Verify', 'TokenRejected', 'verify.token.rejected@example.invalid', '00000000-0000-4000-8000-000000000107', 'Active', 'Rejected', FALSE)
     RETURNING id, email
 )
 INSERT INTO password_reset_test_users (case_name, user_id)
@@ -29,6 +35,9 @@ SELECT CASE
            WHEN email = 'verify.token.valid@example.invalid' THEN 'valid'
            WHEN email = 'verify.token.expired@example.invalid' THEN 'expired'
            WHEN email = 'verify.token.used@example.invalid' THEN 'used'
+           WHEN email = 'verify.token.inactive@example.invalid' THEN 'inactive'
+           WHEN email = 'verify.token.pending@example.invalid' THEN 'pending'
+           WHEN email = 'verify.token.rejected@example.invalid' THEN 'rejected'
            ELSE 'blocked'
        END,
        id
@@ -51,7 +60,10 @@ FROM (VALUES
     ('valid', '01', 'set_password'),
     ('expired', '02', 'reset_password'),
     ('used', '03', 'set_password'),
-    ('blocked', '04', 'reset_password')
+    ('blocked', '04', 'reset_password'),
+    ('inactive', '05', 'reset_password'),
+    ('pending', '06', 'reset_password'),
+    ('rejected', '07', 'reset_password')
 ) AS test_case(case_name, hash_byte, purpose)
 JOIN password_reset_test_users AS test_user USING (case_name);
 
@@ -61,7 +73,10 @@ WITH test_hashes(case_name, token_hash, purpose) AS (
         ('valid', decode(repeat('01', 32), 'hex'), 'set_password'),
         ('expired', decode(repeat('02', 32), 'hex'), 'reset_password'),
         ('used', decode(repeat('03', 32), 'hex'), 'set_password'),
-        ('blocked', decode(repeat('04', 32), 'hex'), 'reset_password')
+        ('blocked', decode(repeat('04', 32), 'hex'), 'reset_password'),
+        ('inactive', decode(repeat('05', 32), 'hex'), 'reset_password'),
+        ('pending', decode(repeat('06', 32), 'hex'), 'reset_password'),
+        ('rejected', decode(repeat('07', 32), 'hex'), 'reset_password')
 )
 SELECT test_hashes.case_name,
        EXISTS (
@@ -69,10 +84,12 @@ SELECT test_hashes.case_name,
            FROM public.password_reset_token AS token
            JOIN public.app_user AS account ON account.id = token.user_id
            WHERE token.token_hash = test_hashes.token_hash
-                         AND token.purpose = test_hashes.purpose
+             AND token.purpose = test_hashes.purpose
              AND token.used_at IS NULL
              AND token.expires_at > CURRENT_TIMESTAMP
              AND token.status = 'Active'
+             AND account.status = 'Active'
+             AND account.approval_status = 'Approved'
              AND account.is_blocked = FALSE
        ) AS is_valid
 FROM test_hashes;
@@ -85,7 +102,21 @@ ORDER BY case_name;
 DO $$
 DECLARE
     public_role TEXT;
+    privilege_name TEXT;
 BEGIN
+    IF (
+        SELECT COUNT(DISTINCT test_user.case_name)
+        FROM password_reset_test_users AS test_user
+        JOIN public.password_reset_token AS token ON token.user_id = test_user.user_id
+        WHERE test_user.case_name IN ('inactive', 'pending', 'rejected')
+    ) <> 3 OR (
+        SELECT COUNT(*)
+        FROM password_reset_token_verification_result
+        WHERE case_name IN ('inactive', 'pending', 'rejected') AND is_valid = FALSE
+    ) <> 3 THEN
+        RAISE EXCEPTION 'Inactive, pending, and rejected account tokens must be present and invalid';
+    END IF;
+
     IF EXISTS (
         SELECT 1
         FROM password_reset_token_verification_result
@@ -99,22 +130,27 @@ BEGIN
     END IF;
 
     FOREACH public_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
-        IF has_table_privilege(public_role, 'public.password_reset_token', 'SELECT')
-            OR has_table_privilege(public_role, 'public.password_reset_token', 'INSERT')
-            OR has_table_privilege(public_role, 'public.password_reset_token', 'UPDATE')
-            OR has_table_privilege(public_role, 'public.password_reset_token', 'DELETE') THEN
-            RAISE EXCEPTION 'Public API role % has direct token-table privileges', public_role;
+        FOREACH privilege_name IN ARRAY ARRAY[
+            'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'
+        ] LOOP
+            IF has_table_privilege(public_role, 'public.password_reset_token', privilege_name) THEN
+                RAISE EXCEPTION 'Public API role % has % on password_reset_token', public_role, privilege_name;
+            END IF;
+        END LOOP;
+    END LOOP;
+
+    FOREACH privilege_name IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'] LOOP
+        IF NOT has_table_privilege('service_role', 'public.password_reset_token', privilege_name) THEN
+            RAISE EXCEPTION 'service_role requires % on password_reset_token', privilege_name;
         END IF;
     END LOOP;
 
-    IF NOT has_table_privilege('service_role', 'public.password_reset_token', 'INSERT')
-        OR NOT has_table_privilege('service_role', 'public.password_reset_token', 'SELECT')
-        OR NOT has_sequence_privilege(
+    IF NOT has_sequence_privilege(
             'service_role',
             pg_get_serial_sequence('public.password_reset_token', 'id'),
             'USAGE'
         ) THEN
-        RAISE EXCEPTION 'service_role must retain token-table and identity-sequence access';
+        RAISE EXCEPTION 'service_role must retain token identity-sequence access';
     END IF;
 END;
 $$;

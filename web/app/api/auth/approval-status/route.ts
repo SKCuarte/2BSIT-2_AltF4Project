@@ -60,7 +60,7 @@ export async function GET() {
   const admin = createSupabaseAdminClient();
   const { data: profile, error: profileError } = await admin
     .from("app_user")
-    .select("auth_user_id, is_blocked, approval_status")
+    .select("auth_user_id, is_blocked, approval_status, status")
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 

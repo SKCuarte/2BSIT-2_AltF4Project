@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
-export const REGISTRATION_CLAIM_COOKIE = "registration_claim";
+export const REGISTRATION_CLAIM_COOKIE = "verified_registration_claim";
 export const REGISTRATION_CLAIM_MAX_AGE = 60 * 60 * 24 * 90;
 
 function sign(payload, secret) {

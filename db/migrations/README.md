@@ -12,7 +12,7 @@ Never change or remove an applied migration. Add a new numbered migration instea
 
 Password token lifetimes are application configuration, not schema defaults: use 24 hours for `set_password` and 30 minutes for `reset_password`. Generate at least 32 cryptographically random bytes, encode them URL-safe, show/send the raw token only once, and store only its SHA-256 digest as 32 bytes. Email the link after the database transaction commits; in development, print it once to the console. Never log the raw token or its link. Use constant-time digest comparison in the application layer when comparing digest values; SQL equality is not a constant-time guarantee.
 
-The server validates a candidate digest with this query (bind `$1` as the 32-byte SHA-256 digest and `$2` as the requested purpose):
+The current application uses Supabase Auth for password recovery; it does not consume this token table. For a future integration, validate a candidate digest with this query (bind `$1` as the 32-byte SHA-256 digest and `$2` as the requested purpose):
 
 ```sql
 SELECT token.id, token.user_id, token.purpose
@@ -23,6 +23,8 @@ WHERE token.token_hash = $1::BYTEA
 	AND token.used_at IS NULL
 	AND token.expires_at > CURRENT_TIMESTAMP
 	AND token.status = 'Active'
+	AND account.status = 'Active'
+	AND account.approval_status = 'Approved'
 	AND account.is_blocked = FALSE
 LIMIT 1;
 ```
@@ -34,6 +36,8 @@ BEGIN;
 SELECT id
 FROM public.app_user
 WHERE id = $1
+	AND status = 'Active'
+	AND approval_status = 'Approved'
 	AND is_blocked = FALSE
 FOR UPDATE;
 
@@ -52,13 +56,118 @@ VALUES ($1, $2, $3, $4, $5);
 COMMIT;
 ```
 
-When a token is redeemed, update it conditionally in the same transaction as the password/auth operation: set `used_at = CURRENT_TIMESTAMP`, `status = 'Inactive'`, and a `USED system ...` stamp only when it is still Active, unused, and unexpired. Schedule this cleanup statement as a future team job; it removes expired and consumed rows:
+When a token is redeemed, update it conditionally in the same transaction as any database password operation: set `used_at = CURRENT_TIMESTAMP`, `status = 'Inactive'`, and a `USED system ...` stamp only when the token is still Active, unused, and unexpired and the account is still Active, Approved, and unblocked. A separate Supabase Auth API call cannot participate in that PostgreSQL transaction; design and test failure handling before enabling such an integration. Schedule this cleanup statement as a future team job; it removes expired and consumed rows:
 
 ```sql
 DELETE FROM public.password_reset_token
 WHERE expires_at <= CURRENT_TIMESTAMP OR used_at IS NOT NULL;
 ```
 
-Run `db/verification/password_reset_token_verification.sql` only against the disposable local/test database with the documented `auth.users` stub. It creates valid, expired, used, and blocked-user fixtures inside a transaction, reports each expected validity result, checks API-role access, and rolls everything back. Never run it against hosted Supabase Auth or Production.
+Run `db/verification/password_reset_token_verification.sql` only against the disposable local/test database with the documented `auth.users` stub. It creates valid, expired, used, blocked, inactive, pending, and rejected-user fixtures inside a transaction, reports each expected validity result, checks API-role access, and rolls everything back. Never run it against hosted Supabase Auth or Production.
 
 `008_protect_last_superadmin.sql` adds triggers on `app_user` and `role` that reject any change leaving no active, unblocked, approved Superadmin (including `service_role` writes).
+
+`011_require_verified_registration_email.sql` adds an email verification
+timestamp and blocks transitions to Approved unless the linked Supabase Auth
+email is confirmed and matches. Existing Pending accounts are not backfilled.
+The trigger owner needs read access to `auth.users`; its functions, privileges,
+Auth column availability and behavior must be verified in a disposable DEV
+database before deployment. The minimal local Auth stub must also provide
+`email` and `email_confirmed_at`; existing verification fixtures require
+adaptation for the new approval rule. See `web/README.md` for the required
+invitation template and Auth configuration.
+
+`012_reserve_password_setup_eligibility.sql` prepares a fail-closed reservation
+for password setup. Eligibility changes, profile deletion and truncation are
+rejected while the relevant reservation exists. An uncertain Auth request
+leaves the reservation in place without automatic expiry; an administrator must
+confirm with the Auth operator that no update remains in flight before a
+privileged DB operator removes it. This may indefinitely delay account
+blocking. Functions, ownership, isolation, privileges and concurrent behavior
+must be verified in a disposable DEV database before deployment.
+
+`009_protect_dashboard_module_data.sql` enables RLS and revokes direct API-role
+access to business tables and the effective-rights view. All module reads and
+writes must go through server code that verifies the authenticated user's
+module and action rights before using `service_role`. Apply this migration
+before exposing the dashboard; it intentionally disables any direct Supabase
+client access to those tables.
+
+`010_admin_implicit_effective_rights.sql` aligns the effective-rights view with
+the dashboard: approved, active Admins and Superadmins have all active rights
+implicitly; Users require active permission grants. Approval remains required
+and blocked accounts must still be denied separately by the server. This Admin
+policy requires Project Owner approval; do not treat its implementation as
+approval. It conflicts with per-right restrictions for Admins and must be
+resolved before deployment. The reported Student Guide interpretation gives
+Admins operational module rights and User Management, but reserves
+Superadmin-only actions and accounts for Superadmins. The current view grants
+Admins every active catalogue right without classifying future additions; it
+must not be used to authorize Superadmin-only actions. The grant/revoke policy
+still requires separate approval. `005` and `010` select the same view columns in
+the same order from the same source expressions, but this does not establish
+compatibility with an existing deployment's view: inspect its column names,
+types and order before applying `010`.
+
+Run
+`db/verification/user_management_verification.sql` only in a disposable local
+or test database with its documented Auth fixtures after applying migrations.
+The verification checks module-table RLS and API-role privileges as well as
+effective rights. It targets the `003` BIGINT baseline, not the reported live
+UUID schema, and cannot verify that schema without a reviewed adaptation. Review
+role memberships, other exposed views and functions,
+and any existing policies separately in the target environment.
+The script writes synthetic fixtures in a transaction; rollback does not undo
+identity-sequence advances. Use a disposable database, never a shared one. Its
+last-Superadmin assertions require no pre-existing eligible Superadmin, which
+the script checks before creating fixtures.
+
+The script checks database view behavior and database privileges; it does not
+establish that `hasRight` agrees with the view or verify live Supabase API
+access. Compare both for User, Admin and Superadmin with active/inactive grants,
+rights and modules in a representative Development project, and exercise
+direct authenticated and anonymous access separately. Migration `009` grants
+all table privileges to `service_role`; the team must review and narrow these
+privileges in a forward-only migration after confirming server requirements.
+Revoking write or administrative privileges can break existing server jobs or
+other service-role consumers even if this dashboard currently only reads counts;
+inventory and test those consumers before changing grants.
+
+Before deciding whether `010` can replace a target view, inspect the target's
+actual signature and definition using read-only queries:
+
+```sql
+SELECT attnum, attname, format_type(atttypid, atttypmod) AS data_type
+FROM pg_attribute
+WHERE attrelid = to_regclass('public.v_user_effective_rights')
+  AND attnum > 0 AND NOT attisdropped
+ORDER BY attnum;
+SELECT pg_get_viewdef(to_regclass('public.v_user_effective_rights'), true);
+```
+
+Compare all existing columns, types, view options, grants, dependants, and
+consumer expectations with `010`. PostgreSQL rejects incompatible changes to
+existing column names, order or types. If incompatible, review a versioned view
+and consumer migration rather than dropping the view and its dependants.
+
+For a disposable local PostgreSQL database only, provision the Auth stub in
+`db/README.md`, apply migrations in order, then run:
+
+```powershell
+psql -h localhost -U hope_app -d hope_dev -v ON_ERROR_STOP=1 -f db/verification/user_management_verification.sql
+```
+
+Expected: every catalogue row reports `passed = true`, the assertion blocks
+complete without errors, and the fixture transaction ends with `ROLLBACK`.
+The checks cover approved, pending, rejected, inactive and blocked accounts,
+active and inactive grants, rights and modules, and API-role table privileges.
+The view deliberately retains `granted = true` for a blocked account with an
+active grant; server authorization must reject the blocked account separately.
+Also check inherited role memberships, alternate views and functions, RLS
+policies, sequences and existing foreign-key/audit triggers in the target test
+environment. These checks do not prove direct Supabase access is restricted
+until run against a representative database.
+
+Migrations are forward-only. If an applied migration needs correction, use a
+reviewed follow-up migration; recreating a disposable test database is the
+development recovery option, not a production rollback procedure.

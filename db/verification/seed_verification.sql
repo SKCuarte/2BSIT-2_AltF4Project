@@ -25,7 +25,7 @@ SELECT 'Superadmins approved and unblocked', '0 exceptions',
 FROM public.app_user account
 JOIN public.role account_role ON account_role.id = account.role_id
 WHERE account_role.name = 'Superadmin'
-  AND (account.approval_status <> 'Approved' OR account.is_blocked)
+  AND (account.approval_status IS DISTINCT FROM 'Approved' OR account.is_blocked)
 UNION ALL
 SELECT 'open set_password tokens per user', 'at most 1',
        COALESCE(MAX(open_tokens), 0)::TEXT, COALESCE(MAX(open_tokens), 0) <= 1

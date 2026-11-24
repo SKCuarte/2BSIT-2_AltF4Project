@@ -64,7 +64,7 @@ export default function Home() {
         return;
       }
       setMessage(
-        "Registration successful. Your account is Pending and awaits Super Admin approval."
+        "Your account is Pending. Verify your email before Super Admin approval."
       );
       setMessageType("success");
     } catch {
@@ -116,7 +116,7 @@ export default function Home() {
 
       setRequestSubmitted(true);
       setMessage(
-        "Registration successful. Your account is Pending and awaits Super Admin approval."
+        "Check your email and open the verification link before an administrator can approve your account."
       );
       setMessageType("success");
     } catch {
@@ -152,8 +152,7 @@ export default function Home() {
         <h1 id="registration-title">Create your account</h1>
         <p className="sub">Register to get started with Hope, Inc. ERP.</p>
         <p className="approval-note">
-          After administrator approval, you can set your password and sign in.
-          No email or OTP is sent.
+          Verify your email first. After administrator approval, you can set your password and sign in.
         </p>
 
         <form onSubmit={handleSubmit}>

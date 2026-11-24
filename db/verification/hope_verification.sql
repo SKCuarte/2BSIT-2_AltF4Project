@@ -42,6 +42,7 @@ WITH sale_totals AS (
     ORDER BY ph.effective_date DESC
     LIMIT 1
   ) price ON TRUE
+  WHERE s.status = 'Active'
   GROUP BY s.sale_id
 ), expected(sale_id, expected_total) AS (
   VALUES ('T-001', 234.50::NUMERIC),

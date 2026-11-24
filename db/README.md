@@ -91,17 +91,47 @@ Expected: psql reports `CREATE ROLE`, `CREATE DATABASE`, and `GRANT`; `\password
    ```text
    npm run db:status
    ```
-   Expected on a fresh checkout before migration: migrations `001` through `007` are `PENDING`.
+   Expected on a fresh database before migration: migrations `001` through `012` are `PENDING`.
 3. Apply migrations:
    ```text
    npm run db:migrate
    ```
-   Expected: all seven migrations are reported as applied and recorded in `public.schema_migrations`, in filename order.
+   Before connecting, this requires `DB_ENV=development` and an explicit
+   `DB_NAME`. Local database names must end in `_dev` or `_development`.
+   Remote database names must have that suffix, except that recognized Supabase
+   direct and shared pooler hosts can use `postgres`. Remote migrations require
+   the exact `DB_HOST` in `DB_ALLOWED_DEV_HOSTS`, `DB_SSL=true`, and
+   `DB_CONFIRM_DEV_PROJECT=<lowercase DB_HOST>/<DB_NAME>/<DB_USER>`. Use the
+   actual database user, including its project reference for a shared Supabase
+   pooler, so the confirmation identifies the intended connection. Use a
+   direct connection or session-mode pooler; transaction pooling cannot preserve
+   the session advisory lock. The standard Supabase transaction-pooler port
+   `6543` is rejected. Set these values only in the ignored local `.env`; do not
+   include a password or connection string in the confirmation. A shared pooler
+   host can serve both DEV and production, so its allowlisting alone does not
+   distinguish projects. These settings are safeguards, not proof that a target
+   is non-production; verify the DEV project independently before running the
+   command. `db:reset` has different guards.
+   Expected: all twelve migrations are reported as applied and recorded in `public.schema_migrations`, in filename order.
 4. Confirm migration status:
    ```text
    npm run db:status
    ```
-   Expected: all eight migrations are `APPLIED`, including `004_supabase_auth_profiles.sql`, `005_gate_rights_by_approval.sql`, `006_lock_down_user_management_api_access.sql`, `007_password_reset_token.sql`, and `008_protect_last_superadmin.sql`.
+   Expected: all twelve migrations are `APPLIED`, in this order:
+   ```text
+   001_hope_base_structure.sql
+   002_hope_sample_data.sql
+   003_user_management.sql
+   004_supabase_auth_profiles.sql
+   005_gate_rights_by_approval.sql
+   006_lock_down_user_management_api_access.sql
+   007_password_reset_token.sql
+   008_protect_last_superadmin.sql
+   009_protect_dashboard_module_data.sql
+   010_admin_implicit_effective_rights.sql
+   011_require_verified_registration_email.sql
+   012_reserve_password_setup_eligibility.sql
+   ```
 5. Run repeatable seed scripts:
    ```text
    npm run db:seed
@@ -138,18 +168,27 @@ END;
 $$;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 CREATE SCHEMA IF NOT EXISTS auth;
-CREATE TABLE IF NOT EXISTS auth.users (id UUID PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS auth.users (
+   id UUID PRIMARY KEY, email TEXT, email_confirmed_at TIMESTAMPTZ
+);
 INSERT INTO auth.users (id) VALUES
    ('00000000-0000-4000-8000-000000000001'),
    ('00000000-0000-4000-8000-000000000002'),
-   ('00000000-0000-4000-8000-000000000003')
+   ('00000000-0000-4000-8000-000000000003'),
+   ('00000000-0000-4000-8000-000000000004')
 ON CONFLICT (id) DO NOTHING;
 GRANT USAGE ON SCHEMA auth TO hope_app;
 GRANT REFERENCES ON TABLE auth.users TO hope_app;
+GRANT SELECT ON TABLE auth.users TO hope_app;
 \quit
 ```
 
-Then apply migrations and run `db/verification/user_management_verification.sql` as documented below. Migration 004 requires both `app_user` and any existing `profiles` table to be empty.
+Migration 004 requires both `app_user` and any existing `profiles` table to be empty.
+After migration 011, `db/verification/user_management_verification.sql` needs
+updated verified-email fixtures before it can pass. The separate
+`db/verification/registration_email_verification.sql` is prepared for the
+disposable stub and must be run as a local database administrator. Neither
+script has been verified against a database for this change.
 
 Task 3 migration 006 enables RLS and revokes direct privileges on `app_user` and `user_permission` from `PUBLIC`, `anon`, and `authenticated`. Only the server-side `service_role` keeps direct table/identity-sequence access; never expose its secret key to browser code.
 
@@ -197,16 +236,21 @@ Connect using the app role:
 psql -h localhost -p 5432 -U hope_app -d hope_dev
 ```
 
-At the psql prompt, check the PostgreSQL version and migration table:
+At the psql prompt, first check the PostgreSQL version and whether the migration table exists:
 
 ```sql
 SELECT current_setting('server_version') AS server_version;
 SELECT to_regclass('public.schema_migrations') AS migration_table;
+```
+
+PostgreSQL should be version 15 or newer. On a fresh database before the runner creates the tracking table, `migration_table` is null; skip the next query and exit with `\quit`. If the table exists, `migration_table` is `schema_migrations`; then run:
+
+```sql
 SELECT filename, checksum, applied_at FROM public.schema_migrations ORDER BY filename;
 \quit
 ```
 
-Expected: PostgreSQL version is 15 or newer; `migration_table` is `schema_migrations`; the final query returns zero rows until the first migration is added. `npm run db:status` should show each migration as `APPLIED` or `PENDING`.
+After all twelve migrations are applied, the final query returns twelve rows. `npm run db:status` should show each migration as `APPLIED` or `PENDING`.
 
 ## Development Reset
 

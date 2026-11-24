@@ -80,7 +80,7 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient();
   const { data: profile, error: profileError } = await admin
     .from("app_user")
-    .select("auth_user_id, is_blocked, approval_status")
+    .select("auth_user_id, is_blocked, approval_status, status")
     .eq("auth_user_id", data.user.id)
     .maybeSingle();
 
@@ -98,6 +98,7 @@ export async function POST(request: Request) {
     await supabase.auth.signOut({ scope: "local" });
     const messages: Record<string, string> = {
       blocked: "This account is blocked. Contact the administrator for help.",
+      inactive: "This account is inactive. Contact the administrator for help.",
       pending: "Your account is pending approval.",
       rejected: "Your account was not approved. Contact the administrator for help.",
       profile_missing: "An application profile is not linked to this account. Contact the administrator.",

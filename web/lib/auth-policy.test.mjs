@@ -9,6 +9,7 @@ import {
 const approvedProfile = {
   is_blocked: false,
   approval_status: "Approved",
+  status: "Active",
 };
 
 test("classifies blocked and approval-gated profiles", () => {
@@ -34,6 +35,8 @@ test("classifies blocked and approval-gated profiles", () => {
   );
   assert.equal(getProfileAccessIssue(null), "profile_missing");
   assert.equal(getProfileAccessIssue(approvedProfile), null);
+  assert.equal(getProfileAccessIssue({ ...approvedProfile, status: "Inactive" }), "inactive");
+  assert.equal(getProfileAccessIssue({ ...approvedProfile, status: undefined }), "inactive");
 });
 
 test("requires a temporary-password user to set a new password before dashboard access", () => {
@@ -72,6 +75,14 @@ test("redirects an approved signed-in user away from login and password setup", 
 });
 
 test("denies blocked users and keeps pending users on registration", () => {
+  assert.deepEqual(
+    getAuthenticatedRedirect(
+      "/dashboard",
+      { ...approvedProfile, status: "Inactive" },
+      {}
+    ),
+    { redirect: "/login?error=inactive" }
+  );
   assert.deepEqual(
     getAuthenticatedRedirect(
       "/dashboard",

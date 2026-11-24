@@ -1,8 +1,8 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { getSupabaseClient } from "@/lib/supabase";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -14,9 +14,13 @@ export function LogoutButton() {
     setIsSigningOut(true);
 
     try {
-      const { error } = await getSupabaseClient().auth.signOut();
-      if (error) {
-        setMessage("Unable to sign out. Please try again.");
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        setMessage(result?.error ?? "Unable to sign out. Please try again.");
         return;
       }
 
@@ -30,11 +34,21 @@ export function LogoutButton() {
   }
 
   return (
-    <div>
-      <button className="google-sign-in" onClick={handleSignOut} disabled={isSigningOut}>
+    <div className="um-sidebar-logout">
+      <button
+        type="button"
+        className="um-logout-button"
+        onClick={handleSignOut}
+        disabled={isSigningOut}
+      >
         {isSigningOut ? "Signing out..." : "Log out"}
       </button>
-      <p className="msg" role="status" aria-live="polite">{message}</p>
+
+      {message && (
+        <p className="um-logout-message" role="alert">
+          {message}
+        </p>
+      )}
     </div>
   );
 }
