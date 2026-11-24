@@ -1,5 +1,10 @@
 # Hope, Inc. ERP — S2-UIX-03 Mockups and Developer Handoff
 
+## NOTE:
+
+- READ THE `Readme.md` CONTENTS BELOW TO EASILY NAVIGATE INSIDE THE REPOSITORY CONTENTS.
+  ---
+  
 **Issue:** [#112](https://github.com/SKCuarte/2BSIT-2_AltF4Project/issues/112) — `[S2-UIX-03] Hi-fi mockups and handoff notes`
 **Scope:** All Customer, Product, and Price History screens
 **Prepared:** 2026-11-24
