@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>p06-product-price-states | Hope, Inc. ERP</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body class="">
+<div class="app"><aside class="sidebar">
+  <div class="brand"><span class="brand-mark">H</span>Hope, Inc. ERP</div>
+  <nav class="nav">
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>Dashboard</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>Customer</div>
+    <div class="nav-item on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>Product</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.5"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/></svg>Human Resources</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-7"/></svg>Sales</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</div>
+    <div class="nav-item "><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>User Management</div>
+  </nav>
+  <div class="side-user"><span class="avatar">S</span><span class="who"><b>Super Admin</b><span>Super Admin</span></span><span class="logout">Log out</span></div>
+</aside><div class="main"><div class="topbar">
+  <div class="topbar-left"><span class="hamburger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="top-title">Product</span></div>
+  <span class="role-badge">Super Admin</span>
+</div><div class="content"><div class="content-inner"><h1 class="view-title">Current-price indicator states</h1>
+  <p class="view-sub">The indicator must distinguish a current price, a future-dated price, and no applicable price.</p>
+  <div class="state-grid">
+    <div class="state-card">
+      <div class="top"><h3>Current</h3><span class="pill current">Current</span></div>
+      <div class="value">$13.75</div>
+      <p>Latest active row with effective_date ≤ 2026-11-24. Effective 2026-10-01.</p>
+    </div>
+    <div class="state-card">
+      <div class="top"><h3>Future-dated</h3><span class="pill warning">Upcoming</span></div>
+      <div class="value">$15.00</div>
+      <p>Effective 2026-12-01. Scheduled, not current. The existing $13.75 remains current until then.</p>
+    </div>
+    <div class="state-card">
+      <div class="top"><h3>No current price</h3><span class="pill inactive">Unavailable</span></div>
+      <div class="value none">Not set</div>
+      <p>No active row is effective on or before the display date. Never infer $0.00.</p>
+    </div>
+  </div>
+  <div class="info-note"><b>Open decision:</b> #97 allows current price as of today or a selected display date. The mockups show “as of 2026-11-24”; no date selector is approved yet.</div>
+  <div class="perm-legend"><b>Permission key</b>
+    <span class="key"><span class="perm">V</span> View / module access (open)</span>
+    <span class="key"><span class="perm">A</span> Add Product</span>
+    <span class="key"><span class="perm">E</span> Edit Product</span>
+    <span class="key"><span class="perm">D</span> Delete Product</span>
+    <span class="key"><span class="perm">R</span> Restore (open)</span>
+    <span class="key"><span class="perm">H</span> Price History</span>
+    <span class="key"><span class="perm">A+</span> Add Price</span>
+    <span class="key"><span class="perm">E+</span> Edit Price</span>
+    <span class="key"><span class="perm">D+</span> Delete Price</span>
+  </div></div></div></div></div>
+</body>
+</html>
