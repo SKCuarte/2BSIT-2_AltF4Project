@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>State index | Hope, Inc. ERP</title>
+<link rel="stylesheet" href="states.css">
+</head>
+<body class="">
+
+<div class="board legend">
+  <h1>State index</h1>
+  <p class="lead">Every board below applies one standardized state to a live module screen. The full trigger/message/action specification is in <code>STATE-SPEC.md</code>.</p>
+  <div class="legend-grid">
+    <div class="legend-col"><h3>Empty states</h3><div class="legend-item"><b>01</b><span>Product list — no records yet</span></div><div class="legend-item"><b>02</b><span>Product list — filters match nothing</span></div><div class="legend-item"><b>03</b><span>Customer list — no records yet</span></div><div class="legend-item"><b>04</b><span>Customer list — filters match nothing</span></div><div class="legend-item"><b>05</b><span>Price History — no price rows</span></div></div>
+    <div class="legend-col"><h3>Error states</h3><div class="legend-item"><b>06</b><span>Product form — field errors only</span></div><div class="legend-item"><b>07</b><span>Product form — summary + field errors</span></div><div class="legend-item"><b>08</b><span>Product list — API load failure</span></div><div class="legend-item"><b>09</b><span>Customer form — save failed</span></div><div class="legend-item"><b>10</b><span>Price History — load failed</span></div></div>
+    <div class="legend-col"><h3>Confirm & blocked</h3><div class="legend-item"><b>11</b><span>Soft-delete — customer</span></div><div class="legend-item"><b>12</b><span>Soft-delete — product</span></div><div class="legend-item"><b>13</b><span>Soft-delete — price row</span></div><div class="legend-item"><b>14</b><span>Blocked — customer has sales</span></div><div class="legend-item"><b>15</b><span>Blocked — product has children</span></div></div>
+  </div>
+  <div class="legend-grid" style="margin-top:22px">
+    <div class="legend-col"><h3>Phone states (390 × 844)</h3><div class="legend-item"><b>16</b><span>Empty product list</span></div><div class="legend-item"><b>17</b><span>No-result customer search</span></div><div class="legend-item"><b>18</b><span>Soft-delete confirmation</span></div><div class="legend-item"><b>19</b><span>Blocked product delete</span></div></div>
+    <div class="legend-col"><h3>Rules applied</h3><div class="legend-item"><b>R1</b><span>Empty ≠ no results</span></div><div class="legend-item"><b>R2</b><span>Summary + field errors together</span></div><div class="legend-item"><b>R3</b><span>API error keeps entered values</span></div><div class="legend-item"><b>R4</b><span>Blocked names the child records</span></div></div>
+    <div class="legend-col"><h3>Tokens</h3><div class="legend-item"><b>T1</b><span>Danger #c0392b / #fdecea</span></div><div class="legend-item"><b>T2</b><span>Warning #8a5200 / #fff3d6</span></div><div class="legend-item"><b>T3</b><span>Info #2458a6 / #eaf2ff</span></div><div class="legend-item"><b>T4</b><span>Radius 10 / 14 / 18 px</span></div></div>
+  </div>
+  <div class="legend-note"><b>Scope note.</b> Copy in this deck is proposed where the issue, linked tickets or database do not define it. No new colour, type size or radius was introduced; each state is composed from the approved tokens and existing primitives (card, table, dialog, badge, button, input).</div>
+</div>
+</body>
+</html>

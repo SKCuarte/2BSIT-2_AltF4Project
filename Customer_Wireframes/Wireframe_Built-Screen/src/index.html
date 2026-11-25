@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Screen index — Customer, Product &amp; Price History V2</title>
+<style>
+  :root{
+    --bg:#fbfcfd;--surface:#fff;--soft:#f1f6f8;--text:#10222e;--muted:#5d7080;
+    --border:#e1e8ed;--accent:#0e5a6b;--accent-light:#d9ecf0;--sun:#f2a541;
+    --font:"Avenir Next","Segoe UI","Noto Sans",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{width:1440px;height:900px;overflow:hidden;background:var(--bg);color:var(--text);font:16px/1.5 var(--font);-webkit-font-smoothing:antialiased;padding:44px 56px 30px}
+  header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:16px}
+  .eyebrow{color:var(--accent);font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+  h1{margin:6px 0 0;font-size:32px;line-height:1.1;letter-spacing:-.025em}
+  .meta{color:var(--muted);font-size:12px;text-align:right;line-height:1.6}
+  .grid{display:grid;grid-template-columns:1.05fr 1fr 1fr;gap:16px;margin-top:20px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+  .card h2{margin:0;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+  .card .count{float:right;color:var(--accent);font-size:11.5px;font-weight:700;letter-spacing:.06em}
+  ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
+  li{display:grid;grid-template-columns:44px 1fr;gap:8px;font-size:12.5px;line-height:1.35}
+  li b{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+  li span{color:var(--text)}
+  .states{margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+  .states h2{margin:0;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+  .states .count{float:right;color:var(--accent);font-size:11.5px;font-weight:700;letter-spacing:.06em}
+  .state-cols{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 22px;margin-top:12px}
+  .state-cols h3{margin:0 0 4px;font-size:10.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--accent)}
+  .state-cols p{margin:0 0 3px;font-size:11.5px;line-height:1.4;color:var(--text)}
+  .state-cols small{display:block;color:var(--muted);font-size:10.5px}
+  footer{display:flex;justify-content:space-between;margin-top:14px;color:var(--muted);font-size:10.5px}
+  footer b{color:var(--text)}
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="eyebrow">V2 · Visual package</div>
+      <h1>Screen index</h1>
+    </div>
+    <div class="meta">25 screens · 19 state boards<br>Desktop 1440×900 · Phone 390×844</div>
+  </header>
+
+  <section class="grid">
+    <article class="card">
+      <h2>Customer <span class="count">12</span></h2>
+      <ul>
+        <li><b>C01</b><span>List — default Active</span></li>
+        <li><b>C02</b><span>Search + payment-terms filter</span></li>
+        <li><b>C03</b><span>No matching customers</span></li>
+        <li><b>C04</b><span>Inactive list — restore entry</span></li>
+        <li><b>C05</b><span>Add customer</span></li>
+        <li><b>C06</b><span>Add customer — validation</span></li>
+        <li><b>C07</b><span>Edit customer</span></li>
+        <li><b>C08</b><span>Customer detail</span></li>
+        <li><b>C09</b><span>Deactivate confirmation</span></li>
+        <li><b>C10</b><span>Deactivate blocked</span></li>
+        <li><b>C11</b><span>Restore confirmation</span></li>
+        <li><b>C12</b><span>Phone customer list</span></li>
+      </ul>
+    </article>
+
+    <article class="card">
+      <h2>Product <span class="count">7</span></h2>
+      <ul>
+        <li><b>P01</b><span>List — current prices</span></li>
+        <li><b>P02</b><span>No matching products</span></li>
+        <li><b>P03</b><span>Add product</span></li>
+        <li><b>P04</b><span>Edit product — validation</span></li>
+        <li><b>P05</b><span>Product detail — current price</span></li>
+        <li><b>P06</b><span>Current-price edge states</span></li>
+        <li><b>P07</b><span>Phone product list</span></li>
+      </ul>
+    </article>
+
+    <article class="card">
+      <h2>Price History <span class="count">6</span></h2>
+      <ul>
+        <li><b>PH01</b><span>Price History modal</span></li>
+        <li><b>PH02</b><span>Add price</span></li>
+        <li><b>PH03</b><span>Edit price — validation</span></li>
+        <li><b>PH04</b><span>Delete price confirmation</span></li>
+        <li><b>PH05</b><span>Restore product confirmation</span></li>
+        <li><b>PH06</b><span>Phone Price History</span></li>
+      </ul>
+    </article>
+  </section>
+
+  <section class="states">
+    <h2>Standardized states <span class="count">19 boards</span></h2>
+    <div class="state-cols">
+      <div>
+        <h3>Empty (S1)</h3>
+        <p>Customer list</p><p>Product list</p><p>Product list · phone <small>390×844</small></p><p>Price History</p>
+      </div>
+      <div>
+        <h3>No results (S2)</h3>
+        <p>Customer list</p><p>Customer list · phone <small>390×844</small></p><p>Product list</p>
+        <h3 style="margin-top:10px">Field errors (S3–S4)</h3>
+        <p>Product form · fields</p><p>Product form · summary</p>
+      </div>
+      <div>
+        <h3>Load error (S5)</h3>
+        <p>Product list</p><p>Price History</p>
+        <h3 style="margin-top:10px">Save error (S6)</h3>
+        <p>Customer form</p>
+      </div>
+      <div>
+        <h3>Confirm soft delete (S7)</h3>
+        <p>Customer</p><p>Customer · phone <small>390×844</small></p><p>Product</p><p>Price row</p>
+        <h3 style="margin-top:10px">Blocked delete (S8)</h3>
+        <p>Customer</p><p>Product</p><p>Product · phone <small>390×844</small></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Source: <b>S2-UIX-03</b> mockups + <b>S2-UIX-04</b> state boards</span>
+    <span>Design renders · not runtime application captures</span>
+  </footer>
+</body>
+</html>

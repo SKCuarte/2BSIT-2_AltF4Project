@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Phone — no results | Hope, Inc. ERP</title>
+<link rel="stylesheet" href="states.css">
+</head>
+<body class="phone-stage">
+<div class="phone">
+  <div class="phone-top"><div class="left"><span class="hamburger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="title">Customer</span></div><span class="role-badge">Super Admin</span></div>
+  <div class="phone-body">
+  <h1 class="view-title">Customer</h1>
+  <p class="view-sub">Active customers.</p>
+  <div class="toolbar">
+    <div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input class="input" value="acme" placeholder="Search customer name or ID"></div>
+    <select class="select"><option selected>Active</option><option>All statuses</option><option>Inactive</option></select>
+    <select class="select"><option>All payment terms</option><option>Net 30</option><option selected>Net 45</option></select>
+    <button class="btn btn-outline span-2">Clear filters</button>
+  </div>
+  <div class="empty-state">
+    <span class="empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/><path d="M8.2 8.2l4.6 4.6M12.8 8.2l-4.6 4.6"/></svg></span>
+    <h3>No customers match your filters</h3>
+    <p>Nothing matches “acme” with Net 45 payment terms.</p>
+    <button class="btn btn-outline">Clear filters</button>
+  </div>
+</div>
+</div>
+</body>
+</html>

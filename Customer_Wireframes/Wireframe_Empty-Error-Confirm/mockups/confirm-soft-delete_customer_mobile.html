@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Phone — confirm deactivate | Hope, Inc. ERP</title>
+<link rel="stylesheet" href="states.css">
+</head>
+<body class="phone-stage">
+
+  <div class="phone">
+  <div class="phone-top"><div class="left"><span class="hamburger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="title">Customer</span></div><span class="role-badge">Super Admin</span></div>
+  <div class="phone-body">
+    <h1 class="view-title">Customer</h1>
+    <p class="view-sub">Active customers.</p>
+    <div class="card-list" style="margin-top:14px">
+      <div class="m-card"><div class="m-card-top"><span class="m-card-name">Acme Corporation</span><span class="pill active"><span class="dot"></span>Active</span></div><div class="m-card-meta">C-001 · Net 30</div><div class="m-card-meta">123 Main St, Metro City</div><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-danger btn-sm">Deactivate</button></div></div>
+      <div class="m-card"><div class="m-card-top"><span class="m-card-name">Globex Industries</span><span class="pill active"><span class="dot"></span>Active</span></div><div class="m-card-meta">C-002 · Net 45</div><div class="m-card-meta">456 Oak Ave, Harbor Town</div><div class="row-actions"><button class="btn btn-outline btn-sm">Edit</button><button class="btn btn-danger btn-sm">Deactivate</button></div></div>
+    </div></div>
+</div>
+  <div class="backdrop"></div>
+  <div class="dialog">
+    <div class="dialog-head"><span class="dialog-icon danger">!</span><div><h2>Deactivate Acme Corporation?</h2><p class="sub">Marked Inactive and hidden from the active list. The record is kept and can be restored later.</p></div></div>
+    <div class="dialog-body">Existing sales records are not changed.</div>
+    <div class="dialog-actions"><button class="btn btn-outline">Cancel</button><button class="btn btn-danger">Deactivate</button></div>
+  </div>
+</body>
+</html>
