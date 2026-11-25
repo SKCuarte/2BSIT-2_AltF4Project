@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>p07-product-mobile | Hope, Inc. ERP</title>
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body class="phone-board">
+<div class="phone">
+    <div class="phone-top"><div class="left"><span class="hamburger"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="title">Product</span></div><span class="role-badge">Super Admin</span></div>
+    <div class="phone-body"><h1 class="view-title">Product</h1>
+  <p class="view-sub">Active products.</p>
+  <div class="toolbar">
+    <div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg><input class="input" placeholder="Search product"></div>
+    <select class="select"><option>All units</option><option>pcs</option><option>can</option></select>
+    <select class="select"><option>Active</option><option>Inactive</option></select>
+    <button class="btn btn-primary span-2">Add product <span class="perm">A</span></button>
+  </div>
+  <div class="card-list">
+    <div class="m-card">
+      <div class="m-card-top"><span class="m-card-name">Industrial Widget A</span><span class="pill active"><span class="dot"></span>Active</span></div>
+      <div class="m-card-meta">P-001 · pcs · <b>$13.75</b> · eff. 2026-10-01</div>
+      <div class="row-actions"><button class="btn btn-outline btn-sm">View <span class="perm">V</span></button><button class="btn btn-outline btn-sm">Edit <span class="perm">E</span></button><button class="btn btn-outline btn-sm">Price History <span class="perm">H</span></button><button class="btn btn-danger btn-sm">Deactivate <span class="perm">D</span></button></div>
+    </div>
+    <div class="m-card">
+      <div class="m-card-top"><span class="m-card-name">Safety Gloves XL</span><span class="pill inactive"><span class="dot"></span>Inactive</span></div>
+      <div class="m-card-meta">P-004 · pair · No current price</div>
+      <div class="row-actions"><button class="btn btn-outline btn-sm">View <span class="perm">V</span></button><button class="btn btn-primary btn-sm">Restore <span class="perm">R</span></button><button class="btn btn-outline btn-sm">Price History <span class="perm">H</span></button></div>
+    </div>
+  </div></div>
+  </div>
+</body>
+</html>
