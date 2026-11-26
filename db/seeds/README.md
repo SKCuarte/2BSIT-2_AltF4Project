@@ -6,6 +6,8 @@ Add repeatable PostgreSQL seed scripts here as `NNN_description.sql`. The seed r
 
 `010_default_roles.sql`, `020_system_modules.sql`, and `030_rights_catalogue.sql` seed the 3 roles, 5 modules, and 36 rights; the last file fails if any count is wrong. They use `ON CONFLICT DO NOTHING`, so `npm run db:seed` is safe to repeat. They target the migration-chain schema (migrations 001-007).
 
+`040_demo_customer_product_price_history.sql` adds five fictional Customers with varied payment terms, five Products with varied units, and three effective-date prices for each demo Product. Stable IDs and `ON CONFLICT DO NOTHING` keep it repeatable and leave the existing Sprint 1 superadmin seeds unchanged. `db/verification/demo_customer_product_price_history_verification.sql` checks the fixture values and expected row counts after repeated seeding.
+
 ### Team Superadmins
 
 1. Copy `team.example.csv` to `team.csv` (gitignored) and enter the real names and emails. The header must be exactly `first_name,last_name,email`; commas inside fields are not supported.
@@ -28,6 +30,7 @@ The link is consumed by pages already on `main` (S1-DEV-04, PR #76), so this tas
 ### Verification checklist
 
 - [ ] `npm run db:seed` twice in a row succeeds with no errors and no extra rows.
+- [ ] `psql -f db/verification/demo_customer_product_price_history_verification.sql` passes after the repeat seed run.
 - [ ] `psql -f db/verification/seed_verification.sql` shows every row `passed = t`: roles 3, modules 5, rights 36, Customer 3, Product 6, Human Resources 13, Sales 7, Reports 7.
 - [ ] `SELECT COUNT(*)` of Superadmin rows equals the number of rows in `team.csv`, all `Approved` and unblocked.
 - [ ] `npm run db:setup-links:web` prints one link per team member who has not signed in; running it again prints a different link.
